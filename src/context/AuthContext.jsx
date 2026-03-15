@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
 const STORAGE_WALLET = "bp_wallet";
@@ -50,6 +50,28 @@ export function AuthProvider({ children }) {
     }),
     [walletAddress, chainId]
   );
+
+  useEffect(() => {
+    const ethereum = window.ethereum;
+    if (!ethereum) {
+      return;
+    }
+
+    const syncWallet = async () => {
+      try {
+        const accounts = await ethereum.request({ method: "eth_accounts" });
+        const nextWallet = accounts?.[0] ?? "";
+        const nextChainId = await ethereum.request({ method: "eth_chainId" });
+        const normalized = Number.parseInt(nextChainId, 16);
+        const nextChain = Number.isNaN(normalized) ? null : normalized;
+        setAuth({ wallet: nextWallet, chain: nextChain });
+      } catch (error) {
+        console.error("Failed to sync wallet state", error);
+      }
+    };
+
+    syncWallet();
+  }, []);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

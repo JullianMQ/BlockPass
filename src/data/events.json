@@ -1,0 +1,63 @@
+[
+  {
+    "id": "neon-horizon-2024",
+    "name": "Neon Horizon 2024",
+    "priceEth": 0.45,
+    "date": "Oct 24, 2024",
+    "time": "9:00 PM",
+    "location": "Cyber Arena, Tokyo",
+    "tags": ["live", "assigned"],
+    "availability": "available"
+  },
+  {
+    "id": "digital-echoes-expo",
+    "name": "Digital Echoes Expo",
+    "priceEth": 0.12,
+    "date": "Nov 12, 2024",
+    "time": "10:00 AM",
+    "location": "The Glass House, NYC",
+    "tags": ["featured"],
+    "availability": "available"
+  },
+  {
+    "id": "solstice-beats",
+    "name": "Solstice Beats",
+    "priceEth": 0.8,
+    "date": "Dec 21, 2024",
+    "time": "6:00 PM",
+    "location": "Bayfront Plaza, Miami",
+    "tags": ["assigned"],
+    "availability": "limited"
+  },
+  {
+    "id": "midnight-sessions-iv",
+    "name": "Midnight Sessions: Volume IV",
+    "priceEth": 1.2,
+    "date": "Jan 10, 2025",
+    "time": "11:00 PM",
+    "location": "Berlin Underground",
+    "tags": ["limited-series"],
+    "availability": "invite",
+    "priceRange": "1.2-2.5"
+  },
+  {
+    "id": "the-afterhours",
+    "name": "The Afterhours",
+    "priceEth": 0.05,
+    "date": "Tonight",
+    "time": "11:59 PM",
+    "location": "Secret Location, London",
+    "tags": ["late-night"],
+    "availability": "available"
+  },
+  {
+    "id": "celestial-signal",
+    "name": "Celestial Signal",
+    "priceEth": 0.22,
+    "date": "Oct 30, 2024",
+    "time": "8:30 PM",
+    "location": "Skyline Dome, Seoul",
+    "tags": ["featured"],
+    "availability": "available"
+  }
+]

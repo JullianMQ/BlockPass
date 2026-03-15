@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import Navbar from "../components/Navbar.jsx";
+import Button from "../components/Button.jsx";
 
 const SEPOLIA_CHAIN_ID = 11155111;
 
@@ -84,7 +86,9 @@ function Login() {
   };
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden p-6">
+    <div className="min-h-screen bg-background text-on-surface">
+      <Navbar showFloatingNav={false} showSearch={false} />
+      <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 pb-12 pt-28">
       <div className="absolute left-[-10%] top-[-10%] h-[40%] w-[40%] rounded-full bg-primary/10 blur-[120px]"></div>
       <div className="absolute bottom-[-10%] right-[-10%] h-[40%] w-[40%] rounded-full bg-secondary-container/20 blur-[120px]"></div>
 
@@ -108,14 +112,13 @@ function Login() {
             <div className="space-y-6">
               {!isConnected && hasProvider && (
                 <div>
-                  <button
-                    className="group flex h-16 w-full items-center justify-center gap-4 rounded-full signature-gradient font-headline text-lg font-bold text-on-primary shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    onClick={handleConnect}
-                    type="button"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/10">
-                      <img
-                        alt="MetaMask Logo"
+                <Button
+                  className="h-16 w-full gap-4 text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={handleConnect}
+                >
+                  <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-white/10">
+                    <img
+                      alt="MetaMask Logo"
                         className="h-5 w-5"
                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuAynZuMqk7pR5EwFmIl0rvRDnVBwAMH5LNp83Nuq_slkKi76EAHvOyMguyA_5SKglkHT8j9_nPZ5ols4fK4XfoGDckm7IWadcBTrJ-a46BGvK7TXhpAAnnEf1MOK6WyxhAFr6slHcX7OgEflYsG7O1zhfCHDxlej44lH-vvcIPtsQC6fndWq4bD4kcTuKa7R240Qxccn_pwSgfybPjJkbk1sS8sj0GOzz6NLwcE8fDrjiMhh85YRAHJkahSEbrWHO_qEFXo8_pzzj6L"
                       />
@@ -123,7 +126,7 @@ function Login() {
                     <span>
                       {isConnecting ? "Connecting..." : "Connect with MetaMask"}
                     </span>
-                  </button>
+                </Button>
                 </div>
               )}
 
@@ -142,16 +145,16 @@ function Login() {
                       {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
                     </p>
                   </div>
-                  <button
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-full ghost-border font-label text-sm font-semibold text-on-surface-variant transition-all hover:bg-surface-variant/30 hover:text-on-surface"
+                  <Button
+                    className="h-12 w-full gap-2 text-sm font-semibold"
                     onClick={handleDisconnect}
-                    type="button"
+                    variant="secondary"
                   >
                     <span className="material-symbols-outlined text-lg">
                       logout
                     </span>
                     <span>Disconnect</span>
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -226,7 +229,8 @@ function Login() {
           Mainnet Node Active
         </p>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
 

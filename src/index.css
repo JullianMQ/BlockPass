@@ -79,7 +79,17 @@
     -webkit-backdrop-filter: blur(20px);
   }
 
+  .glass-nav {
+    background: rgba(45, 52, 73, 0.4);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(70, 69, 84, 0.15);
+  }
+
   .signature-gradient {
+    background: linear-gradient(135deg, #c0c1ff 0%, #8083ff 100%);
+  }
+
+  .primary-gradient {
     background: linear-gradient(135deg, #c0c1ff 0%, #8083ff 100%);
   }
 

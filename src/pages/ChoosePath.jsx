@@ -1,28 +1,20 @@
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
+import Navbar from "../components/Navbar.jsx";
+import Button from "../components/Button.jsx";
 
 function ChoosePath() {
   const { walletAddress } = useAuth();
+  const navigate = useNavigate();
   const shortenedWallet = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : "0x...4f2a";
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
-      <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4 glass-panel">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-3xl text-primary">
-            confirmation_number
-          </span>
-          <h1 className="font-headline text-2xl font-bold tracking-tight">
-            BlockPass
-          </h1>
-        </div>
-        <div className="rounded-full border border-outline-variant bg-surface-container-low px-4 py-1.5 text-xs font-medium text-on-surface-variant">
-          {shortenedWallet}
-        </div>
-      </header>
+      <Navbar showFloatingNav />
 
-      <main className="relative flex flex-grow flex-col items-center justify-center overflow-hidden px-6 py-20">
+      <main className="relative flex flex-grow flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-28">
         <div className="absolute -left-20 top-1/4 h-96 w-96 rounded-full bg-primary opacity-5 blur-[120px]"></div>
         <div className="absolute -right-20 bottom-1/4 h-80 w-80 rounded-full bg-secondary-container opacity-10 blur-[100px]"></div>
 
@@ -64,10 +56,10 @@ function ChoosePath() {
               effortlessly.
             </p>
             <div className="mt-auto">
-              <button className="flex h-14 w-full items-center justify-center gap-2 rounded-full signature-gradient font-bold text-on-primary transition-transform group-hover:scale-[1.02]">
+              <Button className="h-14 w-full gap-2" variant="primary">
                 <span>Get Started</span>
                 <span className="material-symbols-outlined">arrow_forward</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -93,10 +85,14 @@ function ChoosePath() {
               unique digital collectibles in your secure personal vault.
             </p>
             <div className="mt-auto">
-              <button className="flex h-14 w-full items-center justify-center gap-2 rounded-full border border-outline-variant/40 font-bold text-on-surface transition-colors hover:bg-surface-container-highest">
+              <Button
+                className="h-14 w-full gap-2"
+                onClick={() => navigate("/catalog")}
+                variant="outline"
+              >
                 <span>Browse Catalog</span>
                 <span className="material-symbols-outlined">search</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -112,30 +108,6 @@ function ChoosePath() {
           <div>Fully Verified Contracts</div>
         </div>
       </main>
-
-      <nav className="sticky bottom-6 mx-6 flex items-center justify-around rounded-full border border-outline-variant/20 glass-panel p-4 md:hidden">
-        <button className="flex flex-col items-center gap-1 text-primary">
-          <span
-            className="material-symbols-outlined"
-            style={{ fontVariationSettings: '"FILL" 1' }}
-          >
-            explore
-          </span>
-          <span className="font-label text-[10px] font-medium">Explore</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-on-surface-variant/60">
-          <span className="material-symbols-outlined">confirmation_number</span>
-          <span className="font-label text-[10px] font-medium">Tickets</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-on-surface-variant/60">
-          <span className="material-symbols-outlined">qr_code_scanner</span>
-          <span className="font-label text-[10px] font-medium">Verify</span>
-        </button>
-        <button className="flex flex-col items-center gap-1 text-on-surface-variant/60">
-          <span className="material-symbols-outlined">menu</span>
-          <span className="font-label text-[10px] font-medium">Menu</span>
-        </button>
-      </nav>
 
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div className="absolute left-1/4 top-1/4 h-1 w-1 rounded-full bg-primary/20"></div>
