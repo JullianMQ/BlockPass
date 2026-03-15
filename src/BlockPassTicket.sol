@@ -14,11 +14,14 @@ contract BlockPassTicket is ERC721, Ownable {
     uint256 public nextEventId = 1;
 
     struct Event {
+        uint256 id;
         string name;
-        uint256 startDate;
-        uint256 endDate;
+        string location;
+        uint256 startDate;   // UNIX timestamp
+        uint256 endDate;     // UNIX timestamp
         uint256 totalSeats;
         uint256 ticketPrice;
+        uint256 ticketsSold;
         bool active;
     }
 
@@ -49,6 +52,7 @@ contract BlockPassTicket is ERC721, Ownable {
 
     function createEvent(
         string memory name,
+        string memory location,
         uint256 startDate,
         uint256 endDate,
         uint256 totalSeats,
@@ -56,13 +60,17 @@ contract BlockPassTicket is ERC721, Ownable {
     ) external onlyOwner {
 
         require(endDate >= startDate, "Invalid dates");
+        require(startDate > block.timestamp, "Event must be in future");
 
         events[nextEventId] = Event(
+            nextEventId,
             name,
+            location,
             startDate,
             endDate,
             totalSeats,
             ticketPrice,
+            0,
             true
         );
 
@@ -73,7 +81,7 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Buy Ticket (max 2)
+    Buy Ticket
     =================================
     */
 
@@ -83,7 +91,7 @@ contract BlockPassTicket is ERC721, Ownable {
         uint256[] memory seatNumbers
     ) external payable {
 
-        Event memory ev = events[eventId];
+        Event storage ev = events[eventId];
 
         uint256 quantity = seatNumbers.length;
 
@@ -121,6 +129,8 @@ contract BlockPassTicket is ERC721, Ownable {
 
             _safeMint(msg.sender, tokenId);
 
+            ev.ticketsSold++;
+
             emit TicketPurchased(msg.sender, tokenId);
         }
 
@@ -129,7 +139,53 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Auto Generate Metadata
+    Fetch All Events (NEW)
+    =================================
+    */
+
+    function getEvents() public view returns (Event[] memory) {
+
+        Event[] memory allEvents = new Event[](nextEventId - 1);
+
+        for(uint i = 1; i < nextEventId; i++) {
+            allEvents[i-1] = events[i];
+        }
+
+        return allEvents;
+    }
+
+    /*
+    =================================
+    Tickets Sold (NEW)
+    =================================
+    */
+
+    function ticketsSold(uint256 eventId)
+        external
+        view
+        returns(uint256)
+    {
+        return events[eventId].ticketsSold;
+    }
+
+    /*
+    =================================
+    Seats Left (NEW)
+    =================================
+    */
+
+    function seatsLeft(uint256 eventId)
+        external
+        view
+        returns(uint256)
+    {
+        Event memory ev = events[eventId];
+        return ev.totalSeats - ev.ticketsSold;
+    }
+
+    /*
+    =================================
+    Auto Metadata
     =================================
     */
 
@@ -153,7 +209,7 @@ contract BlockPassTicket is ERC721, Ownable {
                         '"description":"Blockchain verified event ticket",',
                         '"attributes":[',
                             '{"trait_type":"Event","value":"', ev.name, '"},',
-                            '{"trait_type":"Day","value":"', t.day.toString(), '"},',
+                            '{"trait_type":"Location","value":"', ev.location, '"},',
                             '{"trait_type":"Seat","value":"', t.seatNumber.toString(), '"}',
                         ']',
                         '}'
@@ -217,7 +273,7 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Withdraw Funds
+    Withdraw
     =================================
     */
 
@@ -225,9 +281,7 @@ contract BlockPassTicket is ERC721, Ownable {
         external
         onlyOwner
     {
-        payable(owner()).transfer(
-            address(this).balance
-        );
+        payable(owner()).transfer(address(this).balance);
     }
 
     /*
@@ -243,12 +297,7 @@ contract BlockPassTicket is ERC721, Ownable {
         uint256 batchSize
     ) internal override {
 
-        super._beforeTokenTransfer(
-            from,
-            to,
-            tokenId,
-            batchSize
-        );
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
         if (from != address(0) && to != address(0)) {
             revert("Ticket transfers disabled");
