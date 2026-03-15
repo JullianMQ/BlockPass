@@ -19,6 +19,10 @@ function Navbar({
     { label: "Docs", onClick: () => navigate("/docs") },
     { label: "Support", onClick: () => navigate("/support") },
   ];
+  const organizerItems = [
+    { label: "Create Event", onClick: () => navigate("/organizer-dashboard") },
+    { label: "Mark Used", onClick: () => navigate("/mark-used") },
+  ];
 
   return (
     <>
@@ -60,12 +64,7 @@ function Navbar({
               >
                 My Tickets
               </Link>
-              <Link
-                className="font-label text-sm font-medium transition-colors hover:text-primary"
-                to="/organizer-dashboard"
-              >
-                Create Event
-              </Link>
+              <Dropdown label="Organizer" items={organizerItems} />
               <Dropdown label="Resources" items={resourceItems} />
             </div>
           </div>

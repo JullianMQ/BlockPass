@@ -108,20 +108,6 @@ function OrganizerDashboard() {
       <Navbar showFloatingNav={false} showSearch />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-8 pb-24 pt-28">
-        <nav className="flex items-center gap-3 text-sm">
-          <span className="text-on-surface-variant">Organizer</span>
-          <span className="material-symbols-outlined text-xs text-outline">
-            chevron_right
-          </span>
-          <span className="text-on-surface-variant">Events</span>
-          <span className="material-symbols-outlined text-xs text-outline">
-            chevron_right
-          </span>
-          <span className="text-primary underline underline-offset-4">
-            Create New Event
-          </span>
-        </nav>
-
         <div className="flex flex-col gap-12">
           <header>
             <h1 className="mb-4 font-headline text-5xl font-bold tracking-tight">
