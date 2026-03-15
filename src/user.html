@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>BlockPass — Buy Ticket (Seat Map)</title>
+
+<!-- ethers v5 UMD -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+<style>
+  :root{ --bg:#0f172a; --card:#0b1220; --muted:#9aa7c7; --accent:#6366f1; --success:#38b000; --danger:#ff5964 }
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071029,#071a2b);font-family:Inter,Arial,Helvetica,sans-serif;color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:28px}
+  .card{background:var(--card);padding:22px;border-radius:12px;width:920px;max-width:96vw;box-shadow:0 12px 40px rgba(2,6,23,0.6)}
+  h1{margin:0 0 8px;font-size:20px}
+  .row{display:flex;gap:12px;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+  input[type=text], input[type=number]{padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#dbeafe;min-width:160px}
+  button{padding:10px 14px;border-radius:8px;border:0;background:var(--accent);color:white;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  .seat-map{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;padding:10px;background:rgba(255,255,255,0.01);border-radius:8px}
+  .seat{padding:10px;border-radius:6px;background:rgba(255,255,255,0.02);text-align:center;cursor:pointer;border:1px solid rgba(255,255,255,0.02)}
+  .seat.taken{background:#2a3138;color:#9aa7c7;cursor:not-allowed}
+  .seat.selected{outline:3px solid rgba(99,102,241,0.25);box-shadow:0 6px 14px rgba(99,102,241,0.12)}
+  .legend{display:flex;gap:8px;align-items:center;margin-top:6px}
+  .legend .dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+  pre{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;color:#cfe6ff;max-height:220px;overflow:auto}
+  .right{margin-left:auto}
+  .small{font-size:13px;color:var(--muted)}
+  .notice{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:13px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>BlockPass — Buy Ticket (Seat Map)</h1>
+
+    <div class="row" style="gap:18px;margin-top:6px">
+      <div style="flex:1">
+        <div class="muted">Wallet</div>
+        <div id="wallet" style="font-weight:600">Not connected</div>
+      </div>
+
+      <div style="width:300px">
+        <div class="muted">Contract (fixed)</div>
+        <div id="contractAddress" style="font-weight:600">0x4eBCe290d6A89a5E1A25f6b603f0Ee73F90b23f7</div>
+        <div id="network" class="small" style="margin-top:6px">Network: —</div>
+      </div>
+
+      <div style="width:200px;text-align:right">
+        <div class="muted">Ticket price</div>
+        <div id="ticketPrice" style="font-weight:600">--</div>
+        <div style="height:6px"></div>
+        <button id="connectBtn">Connect Wallet</button>
+      </div>
+    </div>
+
+    <hr style="border:none;height:1px;background:rgba(255,255,255,0.03);margin:14px 0">
+
+    <div class="row" style="align-items:flex-start">
+      <!-- left: seat map -->
+      <div style="flex:1">
+        <div class="muted">Seat map (click to select)</div>
+        <div id="seatMap" class="seat-map" style="margin-top:8px"></div>
+
+        <div class="legend">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="dot" style="background:#fff;opacity:0.06;border:1px solid rgba(255,255,255,0.02)"></span> Available
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="dot" style="background:#2a3138"></span> Taken
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="dot" style="background:rgba(99,102,241,0.9)"></span> Selected
+          </div>
+        </div>
+      </div>
+
+      <!-- right: purchase panel -->
+      <div style="width:360px;margin-left:18px">
+        <div class="muted">Selected seat</div>
+        <div id="selectedSeat" style="font-weight:700;margin-bottom:8px">—</div>
+
+        <div class="muted">Metadata (auto-generated)</div>
+        <pre id="metadataPreview" style="height:86px;overflow:auto">Not generated</pre>
+
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button id="buyBtn">Buy Selected Seat</button>
+          <button id="refreshBtn" class="ghost">Refresh Map</button>
+        </div>
+
+        <div style="height:12px"></div>
+        <div id="status" class="notice small">Status: idle</div>
+
+        <hr style="border:none;height:1px;background:rgba(255,255,255,0.03);margin:12px 0">
+
+        <div class="muted">Last action</div>
+        <pre id="log">Nothing yet</pre>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Modified frontend:
+   - CONTRACT_ADDRESS must be a string
+   - metadata is auto-generated (data:application/json;base64,...)
+   - loadPrice() implemented
+   - network check for Sepolia (change SEP_CHAIN_ID if needed)
+*/
+
+const CONTRACT_ADDRESS = "0x4eBCe290d6A89a5E1A25f6b603f0Ee73F90b23f7";
+
+const ABI = [
+  "function ticketPrice() view returns (uint256)",
+  "function buyTicket(uint256,string) payable",
+  "function seatTaken(uint256) view returns (bool)",
+  "function verifyTicket(uint256) view returns (address,uint256,bool,string)"
+];
+
+const ROWS = ['A','B','C','D','E'];
+const COLS = 8;
+const TOTAL_SEATS = ROWS.length * COLS;
+const SEP_CHAIN_ID = 11155111; // Sepolia
+
+let provider = null;
+let signer = null;
+let contract = null;
+let priceBN = null;
+let selectedSeatNumber = null;
+
+const seatMapEl = document.getElementById('seatMap');
+const selectedSeatEl = document.getElementById('selectedSeat');
+const ticketPriceEl = document.getElementById('ticketPrice');
+const walletEl = document.getElementById('wallet');
+const networkEl = document.getElementById('network');
+const statusEl = document.getElementById('status');
+const logEl = document.getElementById('log');
+const metadataPreview = document.getElementById('metadataPreview');
+const connectBtn = document.getElementById('connectBtn');
+const buyBtn = document.getElementById('buyBtn');
+const refreshBtn = document.getElementById('refreshBtn');
+
+function seatIndexToNumber(rowIdx, colIdx){
+  return rowIdx * COLS + colIdx + 1;
+}
+function seatNumberToLabel(n){
+  const zero = n - 1;
+  const row = Math.floor(zero / COLS);
+  const col = zero % COLS;
+  return `${ROWS[row]}${col+1}`;
+}
+function log(msg){
+  const t = new Date().toLocaleTimeString();
+  logEl.textContent = `[${t}] ${msg}\n` + logEl.textContent;
+}
+function setStatus(msg, isError=false){
+  statusEl.textContent = `Status: ${msg}`;
+  statusEl.style.color = isError ? 'var(--danger)' : '';
+}
+
+function buildSeatMap(){
+  seatMapEl.innerHTML = '';
+  for(let r=0;r<ROWS.length;r++){
+    for(let c=0;c<COLS;c++){
+      const seatNumber = seatIndexToNumber(r,c);
+      const btn = document.createElement('div');
+      btn.className = 'seat';
+      btn.dataset.seat = seatNumber;
+      btn.dataset.row = r;
+      btn.dataset.col = c;
+      btn.innerText = seatNumberToLabel(seatNumber);
+      btn.title = `Seat ${seatNumberToLabel(seatNumber)} (#${seatNumber})`;
+      btn.addEventListener('click', onSeatClick);
+      seatMapEl.appendChild(btn);
+    }
+  }
+}
+
+async function loadPrice(){
+  try{
+    if(!contract) return;
+    priceBN = await contract.ticketPrice();
+    ticketPriceEl.innerText = ethers.utils.formatEther(priceBN) + " ETH";
+  }catch(err){
+    console.error('loadPrice error', err);
+    ticketPriceEl.innerText = '--';
+    setStatus('Failed to load ticket price (contract may not match ABI)', true);
+    log('ticketPrice() failed: ' + (err && err.message ? err.message : err));
+  }
+}
+
+async function refreshSeatTaken(){
+  if(!contract){
+    setStatus('Connect wallet to load seat availability.', true);
+    return;
+  }
+  setStatus('Refreshing seat availability...');
+  const children = Array.from(seatMapEl.children);
+  for(const el of children){
+    const seatNumber = Number(el.dataset.seat);
+    try{
+      const taken = await contract.seatTaken(seatNumber);
+      if(taken){
+        el.classList.add('taken');
+        el.classList.remove('selected');
+      } else {
+        el.classList.remove('taken');
+      }
+      if(taken && selectedSeatNumber === seatNumber){
+        selectedSeatNumber = null;
+        selectedSeatEl.innerText = '—';
+        metadataPreview.textContent = 'Not generated';
+      }
+    }catch(err){
+      el.style.opacity = 0.6;
+      console.error('seatTaken read error', err);
+    }
+  }
+  setStatus('Seat availability refreshed.');
+  log('Seat map updated');
+}
+
+function onSeatClick(e){
+  const el = e.currentTarget;
+  if(el.classList.contains('taken')) return;
+  const prev = seatMapEl.querySelector('.seat.selected');
+  if(prev) prev.classList.remove('selected');
+  el.classList.add('selected');
+  selectedSeatNumber = Number(el.dataset.seat);
+  selectedSeatEl.innerText = `${seatNumberToLabel(selectedSeatNumber)} (#${selectedSeatNumber})`;
+  // generate & preview metadata automatically
+  const metadata = generateMetadataObject(selectedSeatNumber);
+  metadataPreview.textContent = JSON.stringify(metadata, null, 2);
+  setStatus(`Selected ${seatNumberToLabel(selectedSeatNumber)}`);
+}
+
+function generateMetadataObject(seatNumber){
+  const label = seatNumberToLabel(seatNumber);
+  const eventName = "BlockPass Demo Event";
+  const now = new Date().toISOString();
+  return {
+    name: `${eventName} — Seat ${label}`,
+    description: `Ticket for ${eventName}, seat ${label}. Minted on ${now}.`,
+    attributes: [
+      { trait_type: "Seat", value: label },
+      { trait_type: "Event", value: eventName },
+      { trait_type: "MintedAt", value: now }
+    ]
+  };
+}
+function generateMetadataDataURI(seatNumber){
+  const obj = generateMetadataObject(seatNumber);
+  const json = JSON.stringify(obj);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return `data:application/json;base64,${b64}`;
+}
+
+async function connectWallet(){
+  try{
+    if(typeof window.ethereum === 'undefined'){
+      alert('MetaMask not detected — install MetaMask and try again.');
+      return;
+    }
+    provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+    await provider.send('eth_requestAccounts', []);
+    signer = provider.getSigner();
+    const addr = await signer.getAddress();
+    walletEl.innerText = addr;
+
+    const net = await provider.getNetwork();
+    networkEl.innerText = `Network: ${net.name} (${net.chainId})`;
+    if(net.chainId !== SEP_CHAIN_ID){
+      setStatus(`Switch MetaMask to Sepolia (chainId ${SEP_CHAIN_ID})`, true);
+      // still continue but warn
+    } else {
+      setStatus('Connected to Sepolia');
+    }
+
+    // create READ contract then load price then switch to signer
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    await loadPrice();
+    contract = contract.connect(signer);
+
+    buildSeatMap();
+    await refreshSeatTaken();
+  }catch(err){
+    console.error('connectWallet error', err);
+    setStatus('Failed to connect wallet: ' + (err && err.message ? err.message : err), true);
+    log('connectWallet error: ' + (err && err.message ? err.message : err));
+  }
+}
+
+async function buySelectedSeat(){
+  try{
+    if(!contract || !signer){
+      alert('Connect wallet first');
+      return;
+    }
+    if(!selectedSeatNumber){
+      alert('Choose a seat from the map');
+      return;
+    }
+    // double-check availability
+    const taken = await contract.seatTaken(selectedSeatNumber);
+    if(taken){
+      setStatus('Seat already taken. Please pick another', true);
+      await refreshSeatTaken();
+      return;
+    }
+    // generate metadata data URI automatically
+    const metadataURI = generateMetadataDataURI(selectedSeatNumber);
+
+    // get price
+    priceBN = await contract.ticketPrice();
+    const ethPrice = ethers.utils.formatEther(priceBN);
+
+    setStatus(`Buying ${seatNumberToLabel(selectedSeatNumber)} — sending ${ethPrice} ETH...`);
+    log(`Buying seat ${seatNumberToLabel(selectedSeatNumber)} (#${selectedSeatNumber}) for ${ethPrice} ETH`);
+
+    const tx = await contract.buyTicket(selectedSeatNumber, metadataURI, { value: priceBN });
+    setStatus('Transaction sent: ' + tx.hash);
+    log('tx: ' + tx.hash);
+
+    const receipt = await tx.wait();
+    setStatus('Purchase confirmed — token minted');
+    log(`Purchase confirmed in block ${receipt.blockNumber}`);
+
+    // refresh UI
+    await refreshSeatTaken();
+    // clear selection
+    selectedSeatNumber = null;
+    selectedSeatEl.innerText = '—';
+    metadataPreview.textContent = 'Not generated';
+  }catch(err){
+    console.error('buySelectedSeat error', err);
+    const msg = (err && (err.reason || err.message)) ? (err.reason || err.message) : String(err);
+    setStatus('Purchase failed: ' + msg, true);
+    log('Purchase failed: ' + msg);
+  }
+}
+
+// wire buttons
+connectBtn.addEventListener('click', connectWallet);
+buyBtn.addEventListener('click', buySelectedSeat);
+refreshBtn.addEventListener('click', async () => {
+  if(!contract) {
+    setStatus('Connect wallet first', true);
+    return;
+  }
+  setStatus('Refreshing...');
+  await refreshSeatTaken();
+});
+
+// initial build
+buildSeatMap();
+setStatus('Ready — connect wallet to load price & seat availability');
+log('Frontend ready. Contract address fixed to: ' + CONTRACT_ADDRESS);
+</script>
+</body>
+</html>
