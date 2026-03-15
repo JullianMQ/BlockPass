@@ -16,7 +16,6 @@ const ABI = [
 function MarkUsed() {
   const { walletAddress } = useAuth();
   const [tokenId, setTokenId] = useState("");
-  const [referenceCode, setReferenceCode] = useState("");
   const [ticketDetails, setTicketDetails] = useState(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -162,14 +161,14 @@ function MarkUsed() {
               </div>
               <div className="space-y-2">
                 <label className="ml-4 block text-xs font-label uppercase tracking-widest text-on-secondary-container">
-                  Reference Code
+                  Organizer Wallet
                 </label>
                 <input
                   className="w-full rounded-full border-none bg-surface-container-highest px-6 py-4 text-on-surface placeholder:text-outline/50 focus:ring-1 focus:ring-primary/40"
-                  placeholder="e.g., BP-7XK4-92QF"
+                  placeholder="Connected wallet required"
                   type="text"
-                  value={referenceCode}
-                  onChange={(event) => setReferenceCode(event.target.value)}
+                  value={walletAddress || ""}
+                  readOnly
                 />
               </div>
             </div>

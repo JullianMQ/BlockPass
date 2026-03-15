@@ -294,7 +294,7 @@ function MyTickets() {
                             : "text-on-surface-variant/50"
                         }`}
                       >
-                        Reference Code
+                        Token ID
                       </p>
                       <p
                         className={`font-mono text-xs font-semibold ${

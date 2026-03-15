@@ -16,6 +16,7 @@ function Navbar({
     : "";
 
   const resourceItems = [
+    { label: "Public Verify", onClick: () => navigate("/verify") },
     { label: "Docs", onClick: () => navigate("/docs") },
     { label: "Support", onClick: () => navigate("/support") },
   ];
