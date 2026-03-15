@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import Button from "./Button.jsx";
@@ -11,6 +12,7 @@ function Navbar({
 }) {
   const { isAuthenticated, walletAddress } = useAuth();
   const navigate = useNavigate();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const shortenedWallet = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : "";
@@ -24,6 +26,22 @@ function Navbar({
     { label: "Create Event", onClick: () => navigate("/organizer-dashboard") },
     { label: "Mark Used", onClick: () => navigate("/mark-used") },
   ];
+
+  const mobileMenuItems = [
+    { label: "Events", onClick: () => navigate("/catalog") },
+    { label: "Portal", onClick: () => navigate("/choose-path") },
+    { label: "My Tickets", onClick: () => navigate("/my-tickets") },
+    { label: "Create Event", onClick: () => navigate("/organizer-dashboard") },
+    { label: "Mark Used", onClick: () => navigate("/mark-used") },
+    { label: "Public Verify", onClick: () => navigate("/verify") },
+    { label: "Docs", onClick: () => navigate("/docs") },
+    { label: "Support", onClick: () => navigate("/support") },
+  ];
+
+  const handleMobileNavigate = (handler) => {
+    handler();
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -119,39 +137,85 @@ function Navbar({
       ) : null}
 
       {showFloatingNav ? (
-        <nav className="fixed bottom-6 left-1/2 z-50 flex h-16 w-[90%] max-w-md -translate-x-1/2 items-center justify-around rounded-full glass-nav px-4 shadow-2xl md:hidden">
-          <Link
-            className="flex flex-col items-center gap-0.5 text-primary"
-            to="/catalog"
-          >
-            <span
-              className="material-symbols-outlined text-[24px]"
-              style={{ fontVariationSettings: '"FILL" 1' }}
+        <>
+          <nav className="fixed bottom-6 left-1/2 z-50 flex h-16 w-[90%] max-w-md -translate-x-1/2 items-center justify-around rounded-full glass-nav px-4 shadow-2xl md:hidden">
+            <Link
+              className="flex flex-col items-center gap-0.5 text-primary"
+              to="/catalog"
             >
-              search
-            </span>
-            <span className="text-[10px] font-bold">Explore</span>
-          </Link>
-          <Link
-            className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface"
-            to="/choose-path"
-          >
-            <span className="material-symbols-outlined text-[24px]">
-              confirmation_number
-            </span>
-            <span className="text-[10px] font-bold">Tickets</span>
-          </Link>
-          <button className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface">
-            <span className="material-symbols-outlined text-[24px]">
-              qr_code_scanner
-            </span>
-            <span className="text-[10px] font-bold">Verify</span>
-          </button>
-          <button className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface">
-            <span className="material-symbols-outlined text-[24px]">menu</span>
-            <span className="text-[10px] font-bold">Menu</span>
-          </button>
-        </nav>
+              <span
+                className="material-symbols-outlined text-[24px]"
+                style={{ fontVariationSettings: '"FILL" 1' }}
+              >
+                search
+              </span>
+              <span className="text-[10px] font-bold">Events</span>
+            </Link>
+            <Link
+              className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface"
+              to="/choose-path"
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                confirmation_number
+              </span>
+              <span className="text-[10px] font-bold">Portal</span>
+            </Link>
+            <Link
+              className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface"
+              to="/my-tickets"
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                confirmation_number
+              </span>
+              <span className="text-[10px] font-bold">Tickets</span>
+            </Link>
+            <Link
+              className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface"
+              to="/verify"
+            >
+              <span className="material-symbols-outlined text-[24px]">
+                verified
+              </span>
+              <span className="text-[10px] font-bold">Verify</span>
+            </Link>
+            <button
+              className="flex flex-col items-center gap-0.5 text-on-surface-variant transition-colors hover:text-on-surface"
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[24px]">menu</span>
+              <span className="text-[10px] font-bold">Menu</span>
+            </button>
+          </nav>
+          {isMobileMenuOpen ? (
+            <div className="fixed bottom-24 left-1/2 z-50 w-[90%] max-w-md -translate-x-1/2 rounded-2xl border border-outline-variant/20 bg-surface-container-highest p-4 shadow-2xl md:hidden">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+                  Navigation
+                </span>
+                <button
+                  className="rounded-full p-2 text-on-surface-variant hover:bg-surface-container"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {mobileMenuItems.map((item) => (
+                  <button
+                    key={item.label}
+                    className="rounded-xl border border-outline-variant/20 bg-surface-container px-3 py-2 text-left text-xs text-on-surface-variant transition-colors hover:text-on-surface"
+                    onClick={() => handleMobileNavigate(item.onClick)}
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : null}
     </>
   );

@@ -128,7 +128,7 @@ function MarkUsed() {
   };
   return (
     <div className="min-h-screen bg-surface text-on-surface">
-      <Navbar showFloatingNav={false} showSearch />
+      <Navbar showSearch />
 
       <main className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-8 pb-24 pt-28 lg:grid-cols-12">
         <div className="flex flex-col gap-12 lg:col-span-7">

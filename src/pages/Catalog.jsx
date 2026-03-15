@@ -11,6 +11,7 @@ const CONTRACT_ADDRESS = "0xEbD7325C20a9257be621b24f50b5BF59dBB579ad";
 const SEPOLIA_CHAIN_ID = 11155111;
 const ABI = [
   "function getEvents() view returns (tuple(uint256 id,address organizer,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,uint256 revenue,bool active)[])",
+  "function withdrawEventRevenue(uint256 eventId)",
 ];
 
 function Catalog() {
@@ -27,6 +28,10 @@ function Catalog() {
   const [creatorFilter, setCreatorFilter] = useState("all");
   const [searchValue, setSearchValue] = useState("");
   const [loadedAt, setLoadedAt] = useState(0);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [withdrawMessage, setWithdrawMessage] = useState("");
+  const [withdrawError, setWithdrawError] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const loadEvents = useCallback(async () => {
       setLoadError("");
@@ -88,6 +93,7 @@ function Catalog() {
             priceEth,
             ticketPrice: priceEth,
             totalSeats: event.totalSeats.toNumber(),
+            ticketsSold: event.ticketsSold.toNumber(),
             availability:
               event.active &&
               event.ticketsSold.toNumber() < event.totalSeats.toNumber()
@@ -147,6 +153,42 @@ function Catalog() {
       loadEvents();
     } catch (error) {
       console.error("MetaMask connect failed", error);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!selectedEvent) return;
+    if (!walletAddress) {
+      setWithdrawError("Connect your wallet to withdraw.");
+      return;
+    }
+    if (!window.ethereum) {
+      setWithdrawError("MetaMask not detected.");
+      return;
+    }
+
+    try {
+      setIsWithdrawing(true);
+      setWithdrawError("");
+      setWithdrawMessage("");
+      const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      if (network.chainId !== SEPOLIA_CHAIN_ID) {
+        setWithdrawError("Switch MetaMask to Sepolia to withdraw.");
+        return;
+      }
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+      const tx = await contract.withdrawEventRevenue(selectedEvent.id);
+      setWithdrawMessage("Withdrawal sent. Waiting for confirmation...");
+      await tx.wait();
+      setWithdrawMessage("Revenue withdrawn to organizer wallet.");
+    } catch (error) {
+      console.error("Withdraw failed", error);
+      setWithdrawError("Unable to withdraw revenue.");
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 
@@ -229,6 +271,19 @@ function Catalog() {
     walletAddress,
     loadedAt,
   ]);
+
+  const selectedEventDetails = useMemo(() => {
+    if (!selectedEvent) return null;
+    return events.find((event) => String(event.id) === String(selectedEvent.id));
+  }, [events, selectedEvent]);
+
+  const isOrganizer = useMemo(() => {
+    if (!selectedEventDetails || !walletAddress) return false;
+    return (
+      selectedEventDetails.organizer?.toLowerCase() ===
+      walletAddress.toLowerCase()
+    );
+  }, [selectedEventDetails, walletAddress]);
 
   const priceItems = [
     { label: "Any Price", onClick: () => setPriceFilter("any") },
@@ -430,13 +485,58 @@ function Catalog() {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {filteredEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onView={() =>
-                navigate(`/seat-map/${event.id}`, { state: { event } })
-              }
-            />
+            <div key={event.id} className="space-y-3">
+              <EventCard
+                event={event}
+                onView={() => {
+                  setSelectedEvent(event);
+                }}
+              />
+              {selectedEventDetails &&
+              String(selectedEventDetails.id) === String(event.id) ? (
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-outline">
+                        Tickets Sold
+                      </p>
+                      <p className="text-lg font-bold text-on-surface">
+                        {selectedEventDetails.ticketsSold}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        className="px-4 py-2 text-xs"
+                        onClick={() =>
+                          navigate(`/seat-map/${event.id}`, { state: { event } })
+                        }
+                        variant="secondary"
+                      >
+                        Open Seat Map
+                      </Button>
+                      {isOrganizer ? (
+                        <Button
+                          className="px-4 py-2 text-xs"
+                          disabled={isWithdrawing}
+                          onClick={handleWithdraw}
+                          variant="outline"
+                        >
+                          {isWithdrawing ? "Withdrawing..." : "Withdraw"}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  {withdrawMessage ? (
+                    <p className="mt-3 text-xs text-primary">
+                      {withdrawMessage}
+                    </p>
+                  ) : null}
+                  {withdrawError ? (
+                    <p className="mt-3 text-xs text-error">{withdrawError}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
       </main>

@@ -89,6 +89,7 @@ function PublicVerify() {
     }
   };
 
+
   const loadEvents = useCallback(async () => {
     if (!window.ethereum) {
       setEventsError("MetaMask not detected.");
@@ -167,7 +168,7 @@ function PublicVerify() {
   }, [loadEvents]);
   return (
     <div className="min-h-screen bg-background text-on-surface">
-      <Navbar showFloatingNav={false} showSearch={false} />
+      <Navbar showSearch={false} />
 
       <main className="mx-auto flex max-w-6xl flex-col items-center px-6 pb-24 pt-32">
         <section className="mb-16 w-full text-center">

@@ -105,7 +105,7 @@ function OrganizerDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
-      <Navbar showFloatingNav={false} showSearch />
+      <Navbar showSearch />
 
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-12 px-8 pb-24 pt-28">
         <div className="flex flex-col gap-12">
