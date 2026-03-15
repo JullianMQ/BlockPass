@@ -198,23 +198,7 @@ function OrganizerDashboard() {
               </div>
             </div>
 
-            <div className="rounded-xl bg-surface-container-low p-8 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="material-symbols-outlined text-primary">
-                    event_seat
-                  </span>
-                  <div>
-                    <h3 className="font-headline font-bold">Assigned Seating</h3>
-                    <p className="text-sm text-on-surface-variant">
-                      Enable for structured venue layouts
-                    </p>
-                  </div>
-                </div>
-                <button className="relative h-6 w-12 rounded-full bg-primary">
-                  <div className="absolute right-1 top-1 h-4 w-4 rounded-full bg-on-primary"></div>
-                </button>
-              </div>
+            <div className="rounded-xl bg-surface-container-low p-8">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-label uppercase tracking-widest text-on-secondary-container">
@@ -243,7 +227,7 @@ function OrganizerDashboard() {
                   />
                 </div>
               </div>
-              <div className="text-xs text-on-surface-variant">
+              <div className="mt-4 text-xs text-on-surface-variant">
                 Total seats: {totalSeats || "—"}
               </div>
             </div>

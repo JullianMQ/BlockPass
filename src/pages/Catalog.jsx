@@ -75,10 +75,6 @@ function Catalog() {
             day: "2-digit",
             year: "numeric",
           });
-          const daySpan = Math.max(
-            1,
-            Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-          );
 
           return {
             id: String(event.id),
@@ -99,7 +95,6 @@ function Catalog() {
               event.ticketsSold.toNumber() < event.totalSeats.toNumber()
                 ? "available"
                 : "limited",
-            tags: daySpan > 1 ? ["assigned"] : [],
             creatorWallet: event.organizer,
           };
         });

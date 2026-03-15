@@ -141,12 +141,12 @@ function App() {
                     </div>
                     <div className="space-y-4">
                       <h3 className="font-headline text-2xl font-bold">
-                        NFT Heritage
+                        Ticket Verification
                       </h3>
                       <p className="font-body leading-relaxed text-on-surface-variant">
-                        Tickets evolve into digital memorabilia after the
-                        event. Unlock exclusive content, airdrops, and future
-                        access based on your attendance history.
+                        Instantly verify on-chain tickets with a public lookup
+                        that confirms ownership, seat, and event details in
+                        seconds.
                       </p>
                     </div>
                   </div>
@@ -396,7 +396,7 @@ function App() {
               </div>
               <div className="flex flex-col items-center justify-between gap-6 border-t border-outline-variant/10 pt-12 md:flex-row">
                 <span className="font-label text-xs text-on-surface-variant">
-                  © 2024 BlockPass Protocol. All rights reserved.
+                  © 2026 BlockPass Protocol. All rights reserved.
                 </span>
                 <div className="flex gap-8">
                   <span className="flex items-center gap-2 font-mono text-[10px] text-primary">

@@ -206,46 +206,41 @@ function MyTickets() {
             return (
               <article
                 key={ticket.id}
-                className={`flex flex-col overflow-hidden rounded-full bg-surface-container transition-all duration-300 md:flex-row ${
+                className={`flex flex-1 flex-col justify-between overflow-hidden rounded-full bg-surface-container p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-30px_rgba(192,193,255,0.35)] ${
                   isUsed
                     ? "opacity-80 grayscale hover:grayscale-0 hover:opacity-100"
                     : "hover:bg-surface-container-high"
                 }`}
               >
-                <div className="relative h-48 w-full bg-surface-container-highest md:h-auto md:w-64">
-                  <div className="absolute inset-0 bg-gradient-to-t from-surface-container/80 to-transparent"></div>
-                  <div className="absolute bottom-4 left-6">
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
-                        isUsed
-                          ? "border border-outline-variant/30 bg-surface-variant/80 text-on-surface-variant"
-                          : "border border-primary/30 bg-primary/20 text-primary"
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${
+                      isUsed
+                        ? "border border-outline-variant/30 bg-surface-variant/80 text-on-surface-variant"
+                        : "border border-primary/30 bg-primary/20 text-primary"
+                    }`}
+                  >
+                    {isUsed ? "Used" : "Valid"}
+                  </span>
+                  <span
+                    className={`font-label text-xs ${
+                      isUsed
+                        ? "text-on-surface-variant/40"
+                        : "text-on-surface-variant/60"
+                    }`}
+                  >
+                    {ticket.tokenId}
+                  </span>
+                </div>
+                <div className="mt-6 flex flex-1 flex-col justify-between">
+                  <div>
+                    <h3
+                      className={`mb-2 font-headline text-2xl font-bold leading-tight ${
+                        isUsed ? "text-on-surface/60 line-through" : ""
                       }`}
                     >
-                      {isUsed ? "Used" : "Valid"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-1 flex-col justify-between p-8">
-                  <div>
-                    <div className="mb-2 flex items-start justify-between">
-                      <h3
-                        className={`font-headline text-2xl font-bold leading-tight ${
-                          isUsed ? "text-on-surface/60 line-through" : ""
-                        }`}
-                      >
-                        {ticket.eventName}
-                      </h3>
-                      <span
-                        className={`font-label text-xs ${
-                          isUsed
-                            ? "text-on-surface-variant/40"
-                            : "text-on-surface-variant/60"
-                        }`}
-                      >
-                        {ticket.tokenId}
-                      </span>
-                    </div>
+                      {ticket.eventName}
+                    </h3>
                     <div
                       className={`mb-4 flex flex-wrap items-center gap-4 text-sm ${
                         isUsed

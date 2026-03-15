@@ -198,7 +198,7 @@ function MarkUsed() {
 
         <div className="lg:col-span-5">
           <div className="sticky top-32">
-            <div className="rounded-full border border-outline-variant/10 bg-surface-container p-1 shadow-[0_40px_60px_-5px_rgba(218,226,253,0.06)]">
+            <div className="rounded-full border border-outline-variant/10 bg-surface-container p-1 shadow-[0_40px_60px_-5px_rgba(218,226,253,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_-30px_rgba(192,193,255,0.35)]">
               <div className="space-y-8 rounded-full bg-surface-container-low p-8">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">

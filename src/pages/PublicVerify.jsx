@@ -128,10 +128,6 @@ function PublicVerify() {
           day: "2-digit",
           year: "numeric",
         });
-        const daySpan = Math.max(
-          1,
-          Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-        );
 
         return {
           id: String(event.id),
@@ -148,7 +144,6 @@ function PublicVerify() {
             event.ticketsSold.toNumber() < event.totalSeats.toNumber()
               ? "available"
               : "limited",
-          tags: daySpan > 1 ? ["assigned"] : [],
           creatorWallet: event.organizer,
           startDateTs: Number(event.startDate),
           endDateTs: Number(event.endDate),
@@ -232,27 +227,25 @@ function PublicVerify() {
 
           <div className="lg:col-span-7">
             <div className="relative">
-              <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-outline-variant/10 bg-surface-container shadow-[0_40px_60px_-5px_rgba(218,226,253,0.06)] md:flex-row">
+              <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-outline-variant/10 bg-surface-container shadow-[0_40px_60px_-5px_rgba(218,226,253,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_40px_80px_-30px_rgba(192,193,255,0.35)] md:flex-row">
                 <div className="flex flex-1 flex-col justify-between p-10">
                   <div>
-                    <div className="mb-8 flex items-center gap-6">
-                      <div className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full bg-emerald-400"></span>
-                        <span className="font-label text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
-                          {ticketDetails ? "Valid" : "—"}
-                        </span>
+                    {ticketDetails ? (
+                      <div className="mb-8 flex items-center gap-6">
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-3 rounded-full bg-emerald-400"></span>
+                          <span className="font-label text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
+                            Valid
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="h-3 w-3 rounded-full bg-primary-container"></span>
+                          <span className="font-label text-xs font-bold uppercase tracking-[0.2em] text-primary-container">
+                            {ticketDetails.used ? "Used" : "Unused"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-3 w-3 rounded-full bg-primary-container"></span>
-                        <span className="font-label text-xs font-bold uppercase tracking-[0.2em] text-primary-container">
-                          {ticketDetails
-                            ? ticketDetails.used
-                              ? "Used"
-                              : "Unused"
-                            : "—"}
-                        </span>
-                      </div>
-                    </div>
+                    ) : null}
                     <h3 className="mb-2 font-headline text-4xl font-bold">
                       {ticketDetails?.eventName || "—"}
                     </h3>

@@ -305,16 +305,11 @@ function SeatMap() {
       <main className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-12 px-8 pb-12 pt-28 lg:grid-cols-12">
         <div className="space-y-12 lg:col-span-8">
           <header>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="rounded-full bg-secondary-container px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-on-secondary-container">
-                Live on Ledger
+            <div className="mb-4 flex items-center gap-1 text-sm font-medium text-primary">
+              <span className="material-symbols-outlined text-sm">
+                verified_user
               </span>
-              <div className="flex items-center gap-1 text-sm font-medium text-primary">
-                <span className="material-symbols-outlined text-sm">
-                  verified_user
-                </span>
-                Blockchain Identity Verified
-              </div>
+              Blockchain Identity Verified
             </div>
             <h1 className="mb-4 font-headline text-5xl font-bold tracking-tighter text-on-surface">
               {eventDetails?.name || "Loading Event"}
@@ -582,7 +577,7 @@ function SeatMap() {
             </span>
           </div>
           <span className="text-label-md text-outline">
-            © 2024 BlockPass. All rights reserved.
+            © 2026 BlockPass. All rights reserved.
           </span>
         </div>
       </footer>

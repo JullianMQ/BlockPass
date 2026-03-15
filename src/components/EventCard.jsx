@@ -13,10 +13,6 @@ function EventCard({ event, onView }) {
 
   const tagMap = {
     live: { label: "Live Now", className: "text-primary" },
-    assigned: {
-      label: "Assigned seating",
-      className: "bg-primary text-on-primary",
-    },
     featured: { label: "Featured", className: "text-on-surface" },
     "limited-series": { label: "Limited Series", className: "text-primary" },
     "late-night": { label: "Late Night", className: "text-on-surface" },
@@ -35,7 +31,7 @@ function EventCard({ event, onView }) {
       : `${priceEth.toFixed(2)} ETH`;
 
   return (
-    <div className="group relative overflow-hidden rounded-xl bg-surface-container transition-colors hover:bg-surface-container-high">
+    <div className="group relative overflow-hidden rounded-xl bg-surface-container transition-all hover:-translate-y-1 hover:bg-surface-container-high hover:shadow-[0_20px_40px_-20px_rgba(192,193,255,0.35)]">
       <div className="p-6">
         <div className="mb-2 flex items-start justify-between">
           <h3 className="font-headline text-2xl font-bold text-on-surface">

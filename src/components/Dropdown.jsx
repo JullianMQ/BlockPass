@@ -19,7 +19,7 @@ function Dropdown({ label, items = [], align = "left", buttonClassName = "" }) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        className={`font-label text-sm font-medium transition-colors hover:text-primary ${buttonClassName}`.trim()}
+        className={`font-label text-sm font-medium transition-all hover:-translate-y-0.5 hover:text-primary ${buttonClassName}`.trim()}
         onClick={() => setIsOpen((prev) => !prev)}
         type="button"
       >

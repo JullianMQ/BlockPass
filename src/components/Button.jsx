@@ -17,7 +17,7 @@ function Button({
   ...props
 }) {
   const base =
-    "rounded-full font-label font-bold transition-all inline-flex items-center justify-center";
+    "rounded-full font-label font-bold transition-all inline-flex items-center justify-center active:scale-[0.98] hover:-translate-y-0.5";
   const variantClass = VARIANTS[variant] || VARIANTS.primary;
 
   return (

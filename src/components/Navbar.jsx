@@ -88,22 +88,6 @@ function Navbar({
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {showSearch ? (
-              <div className="mr-4 hidden items-center gap-3 rounded-full bg-surface-container-highest/50 px-4 py-2 lg:flex">
-                <span className="material-symbols-outlined text-sm text-primary-fixed-dim">
-                  search
-                </span>
-                <span className="font-label text-xs text-on-surface-variant">
-                  Search events or assets...
-                </span>
-              </div>
-            ) : null}
-            <button className="relative rounded-full p-2 transition-colors hover:bg-surface-container-highest">
-              <span className="material-symbols-outlined text-on-surface-variant">
-                notifications
-              </span>
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"></span>
-            </button>
             {isAuthenticated ? (
               <div className="flex items-center gap-3 rounded-full border border-outline-variant/20 bg-surface-container-high px-4 py-1.5">
                 <div className="flex flex-col items-end">
