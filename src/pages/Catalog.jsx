@@ -1,20 +1,150 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
 import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 import Dropdown from "../components/Dropdown.jsx";
 import EventCard from "../components/EventCard.jsx";
-import events from "../data/events.json";
 import { useAuth } from "../context/AuthContext.jsx";
+
+const CONTRACT_ADDRESS = "0xB3874d900eC4133327Bdd7f61926CBBeC3479522";
+const SEPOLIA_CHAIN_ID = 11155111;
+const ABI = [
+  "function getEvents() view returns (tuple(uint256 id,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,bool active)[])",
+];
 
 function Catalog() {
   const { walletAddress } = useAuth();
   const navigate = useNavigate();
+  const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [networkWarning, setNetworkWarning] = useState("");
+  const [hasProvider, setHasProvider] = useState(true);
   const [dateFilter, setDateFilter] = useState("all");
   const [priceFilter, setPriceFilter] = useState("any");
   const [availabilityFilter, setAvailabilityFilter] = useState("any");
   const [creatorFilter, setCreatorFilter] = useState("all");
   const [searchValue, setSearchValue] = useState("");
+  const [loadedAt, setLoadedAt] = useState(0);
+
+  const loadEvents = useCallback(async () => {
+      setLoadError("");
+      setNetworkWarning("");
+
+      if (!window.ethereum) {
+        setHasProvider(false);
+        setLoadError("MetaMask not detected. Install MetaMask to load events.");
+        return;
+      }
+      setHasProvider(true);
+
+      try {
+        setIsLoading(true);
+        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const network = await provider.getNetwork();
+        if (network.chainId !== SEPOLIA_CHAIN_ID) {
+          setNetworkWarning("Switch MetaMask to Sepolia to load on-chain events.");
+          setEvents([]);
+          return;
+        }
+        const code = await provider.getCode(CONTRACT_ADDRESS);
+        if (!code || code === "0x") {
+          setLoadError("Contract not found on Sepolia.");
+          setEvents([]);
+          return;
+        }
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        const onChainEvents = await contract.getEvents();
+        const mappedEvents = onChainEvents.map((event) => {
+          const priceEth = Number(ethers.utils.formatEther(event.ticketPrice));
+          const start = new Date(Number(event.startDate) * 1000);
+          const end = new Date(Number(event.endDate) * 1000);
+          const startDateLabel = start.toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          });
+          const endDateLabel = end.toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          });
+          const daySpan = Math.max(
+            1,
+            Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+          );
+
+          return {
+            id: String(event.id),
+            name: event.name,
+            location: event.location,
+            date: startDateLabel,
+            startDate: startDateLabel,
+            endDate: endDateLabel,
+            priceEth,
+            ticketPrice: priceEth,
+            availability:
+              event.active &&
+              event.ticketsSold.toNumber() < event.totalSeats.toNumber()
+                ? "available"
+                : "limited",
+            tags: daySpan > 1 ? ["assigned"] : [],
+            creatorWallet: "",
+          };
+        });
+        setEvents(mappedEvents);
+        sessionStorage.setItem("bp_events", JSON.stringify(mappedEvents));
+        setLoadedAt(Date.now());
+      } catch (error) {
+        console.error("Failed to load events", error);
+        setLoadError("Failed to load on-chain events.");
+      } finally {
+        setIsLoading(false);
+      }
+    }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
+  useEffect(() => {
+    const ethereum = window.ethereum;
+    if (!ethereum) return undefined;
+
+    const handleChainChanged = () => loadEvents();
+    const handleAccountsChanged = () => loadEvents();
+
+    ethereum.on("chainChanged", handleChainChanged);
+    ethereum.on("accountsChanged", handleAccountsChanged);
+
+    return () => {
+      if (ethereum.removeListener) {
+        ethereum.removeListener("chainChanged", handleChainChanged);
+        ethereum.removeListener("accountsChanged", handleAccountsChanged);
+      }
+    };
+  }, [loadEvents]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadEvents();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [loadEvents]);
+
+  const handleConnect = async () => {
+    if (!window.ethereum) {
+      setHasProvider(false);
+      return;
+    }
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      loadEvents();
+    } catch (error) {
+      console.error("MetaMask connect failed", error);
+    }
+  };
 
   const filteredEvents = useMemo(() => {
     const monthMap = {
@@ -86,7 +216,15 @@ function Catalog() {
       }
       return true;
     });
-  }, [availabilityFilter, creatorFilter, dateFilter, priceFilter, searchValue, walletAddress]);
+  }, [
+    availabilityFilter,
+    creatorFilter,
+    dateFilter,
+    priceFilter,
+    searchValue,
+    walletAddress,
+    loadedAt,
+  ]);
 
   const priceItems = [
     { label: "Any Price", onClick: () => setPriceFilter("any") },
@@ -112,7 +250,7 @@ function Catalog() {
       <Navbar showFloatingNav />
 
       <main className="mx-auto max-w-7xl px-6 pt-28">
-        <section className="mb-20">
+        <section className="mb-12">
           <div className="mb-12 flex flex-col items-end justify-between gap-8 md:flex-row">
             <div className="max-w-2xl">
               <span className="mb-4 block font-label text-xs font-bold uppercase tracking-widest text-on-secondary-container">
@@ -244,21 +382,56 @@ function Catalog() {
             />
             <div className="ml-auto flex items-center gap-3">
               <span className="text-sm text-on-surface-variant">
-                Showing {filteredEvents.length} events
+                {isLoading
+                  ? "Loading events..."
+                  : `Showing ${filteredEvents.length} events`}
               </span>
-              <Button className="h-12 w-12" variant="outline">
+              <Button
+                className="h-12 w-12"
+                onClick={loadEvents}
+                variant="outline"
+              >
                 <span className="material-symbols-outlined">tune</span>
               </Button>
             </div>
           </div>
         </section>
 
+        {networkWarning ? (
+          <div className="mb-6 rounded-xl border border-outline-variant/20 bg-surface-container-low px-6 py-4 text-sm text-on-surface-variant">
+            {networkWarning}
+          </div>
+        ) : null}
+
+        {loadError ? (
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-error/30 bg-error-container/20 px-6 py-4 text-sm text-error">
+            <span>{loadError}</span>
+            {hasProvider ? (
+              <Button className="w-fit px-4 py-2 text-xs" onClick={handleConnect}>
+                Connect Wallet
+              </Button>
+            ) : (
+              <a
+                className="text-xs font-bold text-primary hover:underline"
+                href="https://metamask.io/download/"
+                rel="noreferrer"
+                target="_blank"
+              >
+                Install MetaMask
+              </a>
+            )}
+          </div>
+        ) : null}
+
+
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {filteredEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}
-              onView={() => navigate("/seat-map")}
+              onView={() =>
+                navigate(`/seat-map/${event.id}`, { state: { event } })
+              }
             />
           ))}
         </div>

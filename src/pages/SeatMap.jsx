@@ -1,8 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { ethers } from "ethers";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 
+const CONTRACT_ADDRESS = "0x4eBCe290d6A89a5E1A25f6b603f0Ee73F90b23f7";
+const SEPOLIA_CHAIN_ID = 11155111;
+const ABI = [
+  "function getEvents() view returns (tuple(uint256 id,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,bool active)[])",
+];
 const ROWS = ["A", "B", "C", "D", "E"];
 const COLS = 8;
 const TAKEN_SEATS = new Set([3, 14, 16, 26, 27]);
@@ -12,6 +19,8 @@ const GAS_ESTIMATE = 0.0008;
 const MAX_TICKETS_PER_WALLET = 2;
 
 function SeatMap() {
+  const { eventId } = useParams();
+  const location = useLocation();
   const { walletAddress } = useAuth();
   const [selectedSeat, setSelectedSeat] = useState(null);
   const [purchasedCount, setPurchasedCount] = useState(() => {
@@ -20,6 +29,99 @@ function SeatMap() {
     return stored ? Number(stored) : 0;
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [eventDetails, setEventDetails] = useState(null);
+  const [eventError, setEventError] = useState("");
+  const [eventLoading, setEventLoading] = useState(false);
+
+  const normalizeEventDetails = (details) => {
+    if (!details) return null;
+    if (!details.endDate && details.date) {
+      return { ...details, startDate: details.date, endDate: details.date };
+    }
+    return details;
+  };
+
+  useEffect(() => {
+    const normalizedId = Number(eventId);
+    if (!eventId || Number.isNaN(normalizedId)) {
+      setEventError("Missing event details.");
+      return;
+    }
+
+    const fromState = location.state?.event;
+    if (fromState) {
+      setEventDetails(normalizeEventDetails(fromState));
+      return;
+    }
+
+    const cached = sessionStorage.getItem("bp_events");
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        const cachedEvent = parsed.find((item) => Number(item.id) === normalizedId);
+        if (cachedEvent) {
+          setEventDetails(normalizeEventDetails(cachedEvent));
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to read cached events", error);
+      }
+    }
+
+    const loadEvent = async () => {
+      if (!window.ethereum) {
+        setEventError("MetaMask not detected.");
+        return;
+      }
+      try {
+        setEventLoading(true);
+        setEventError("");
+        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const network = await provider.getNetwork();
+        if (network.chainId !== SEPOLIA_CHAIN_ID) {
+          setEventError("Switch MetaMask to Sepolia to load event details.");
+          return;
+        }
+        const code = await provider.getCode(CONTRACT_ADDRESS);
+        if (!code || code === "0x") {
+          setEventError("Contract not found on Sepolia.");
+          return;
+        }
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        const events = await contract.getEvents();
+        const event = events.find((item) => item.id.toNumber() === normalizedId);
+        if (!event) {
+          setEventError("Event not found on-chain.");
+          return;
+        }
+        const start = new Date(Number(event.startDate) * 1000);
+        const end = new Date(Number(event.endDate) * 1000);
+        setEventDetails({
+          name: event.name,
+          location: event.location,
+          startDate: start.toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          }),
+          endDate: end.toLocaleDateString("en-US", {
+            month: "short",
+            day: "2-digit",
+            year: "numeric",
+          }),
+          ticketPrice: Number(ethers.utils.formatEther(event.ticketPrice)),
+          totalSeats: event.totalSeats.toNumber(),
+        });
+      } catch (error) {
+        console.error("Failed to load event", error);
+        setEventError("Failed to load event details.");
+      } finally {
+        setEventLoading(false);
+      }
+    };
+
+    loadEvent();
+  }, [eventId, location.state]);
 
   const seats = useMemo(() => {
     const items = [];
@@ -42,7 +144,9 @@ function SeatMap() {
     MAX_TICKETS_PER_WALLET - purchasedCount
   );
 
-  const totalPrice = PRICE_ETH + SERVICE_FEE + GAS_ESTIMATE;
+  const ticketPrice =
+    eventDetails?.ticketPrice ?? eventDetails?.priceEth ?? PRICE_ETH;
+  const totalPrice = ticketPrice + SERVICE_FEE + GAS_ESTIMATE;
 
   const handleSelect = (seat) => {
     if (seat.isTaken) {
@@ -92,22 +196,36 @@ function SeatMap() {
               </div>
             </div>
             <h1 className="mb-4 font-headline text-5xl font-bold tracking-tighter text-on-surface">
-              Ethereal Summit 2024
+              {eventDetails?.name || "Loading Event"}
             </h1>
             <div className="flex flex-wrap gap-6 text-on-surface-variant">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary-fixed-dim">
                   calendar_today
                 </span>
-                <span className="text-body-md">Oct 24 - 26, 2024</span>
+                <span className="text-body-md">
+                  {eventDetails
+                    ? `${eventDetails.startDate} - ${eventDetails.endDate}`
+                    : "—"}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary-fixed-dim">
                   location_on
                 </span>
-                <span className="text-body-md">The Glass Pavilion, Neo-Tokyo</span>
+                <span className="text-body-md">
+                  {eventDetails?.location || "—"}
+                </span>
               </div>
             </div>
+            {eventLoading ? (
+              <p className="mt-4 text-sm text-on-surface-variant">
+                Loading event details...
+              </p>
+            ) : null}
+            {eventError ? (
+              <p className="mt-4 text-sm text-error">{eventError}</p>
+            ) : null}
           </header>
 
           <section className="relative overflow-hidden rounded-xl bg-surface-container-low p-10">
@@ -207,7 +325,7 @@ function SeatMap() {
                 <div className="text-right">
                   <p className="text-label-md text-outline">Base Price</p>
                   <p className="text-body-lg font-bold text-primary">
-                    {PRICE_ETH.toFixed(2)} ETH
+                    {ticketPrice.toFixed(2)} ETH
                   </p>
                 </div>
               </div>

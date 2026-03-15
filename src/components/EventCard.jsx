@@ -5,7 +5,6 @@ function EventCard({ event, onView }) {
     name,
     priceEth,
     date,
-    time,
     location,
     tags = [],
     availability,
@@ -74,9 +73,7 @@ function EventCard({ event, onView }) {
             <span className="material-symbols-outlined text-[18px]">
               calendar_month
             </span>
-            <span className="text-sm">
-              {date} • {time}
-            </span>
+            <span className="text-sm">{date}</span>
           </div>
           <div className="flex items-center gap-2 text-on-surface-variant">
             <span className="material-symbols-outlined text-[18px]">

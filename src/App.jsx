@@ -413,7 +413,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/choose-path" element={<ChoosePath />} />
       <Route path="/catalog" element={<Catalog />} />
-      <Route path="/seat-map" element={<SeatMap />} />
+      <Route path="/seat-map/:eventId" element={<SeatMap />} />
       <Route path="/organizer-dashboard" element={<OrganizerDashboard />} />
       <Route path="/my-tickets" element={<MyTickets />} />
       <Route path="/support" element={<SupportPage />} />
