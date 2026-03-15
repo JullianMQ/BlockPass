@@ -1,112 +1,257 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/token/ERC721/ERC721.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/access/Ownable.sol";
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.9.3/contracts/token/ERC721/ERC721.sol";
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.9.3/contracts/access/Ownable.sol";
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.9.3/contracts/utils/Strings.sol";
+import "https://raw.githubusercontent.com/OpenZeppelin/openzeppelin-contracts/v4.9.3/contracts/utils/Base64.sol";
 
 contract BlockPassTicket is ERC721, Ownable {
 
-    uint256 public nextTokenId;
+    using Strings for uint256;
+
+    uint256 public nextTokenId = 1;
+    uint256 public nextEventId = 1;
+
+    struct Event {
+        string name;
+        uint256 startDate;
+        uint256 endDate;
+        uint256 totalSeats;
+        uint256 ticketPrice;
+        bool active;
+    }
 
     struct Ticket {
+        uint256 eventId;
+        uint256 day;
         uint256 seatNumber;
         bool used;
     }
 
-    // tokenId → ticket data
+    mapping(uint256 => Event) public events;
     mapping(uint256 => Ticket) public tickets;
 
-    // prevents duplicate seats
-    mapping(uint256 => bool) public seatTaken;
+    mapping(uint256 => mapping(uint256 => mapping(uint256 => bool))) public seatTaken;
+    mapping(uint256 => mapping(address => uint256)) public ticketsBought;
 
-    constructor() ERC721("BlockPassTicket", "BPT") Ownable(msg.sender) {}
+    event EventCreated(uint256 eventId, string name);
+    event TicketPurchased(address buyer, uint256 tokenId);
+    event TicketUsed(uint256 tokenId);
+
+    constructor() ERC721("BlockPassTicket", "BPT") {}
 
     /*
-    Mint a ticket
-    Only organizer can mint
+    =================================
+    Create Event
+    =================================
     */
 
-    function mintTicket(address buyer, uint256 seatNumber) public onlyOwner {
+    function createEvent(
+        string memory name,
+        uint256 startDate,
+        uint256 endDate,
+        uint256 totalSeats,
+        uint256 ticketPrice
+    ) external onlyOwner {
 
-        require(!seatTaken[seatNumber], "Seat already taken");
+        require(endDate >= startDate, "Invalid dates");
 
-        uint256 tokenId = nextTokenId;
+        events[nextEventId] = Event(
+            name,
+            startDate,
+            endDate,
+            totalSeats,
+            ticketPrice,
+            true
+        );
 
-        _safeMint(buyer, tokenId);
+        emit EventCreated(nextEventId, name);
 
-        tickets[tokenId] = Ticket({
-            seatNumber: seatNumber,
-            used: false
-        });
-
-        seatTaken[seatNumber] = true;
-
-        nextTokenId++;
+        nextEventId++;
     }
 
     /*
-    Verify ticket
-    Returns ticket info
+    =================================
+    Buy Ticket (max 2)
+    =================================
+    */
+
+    function buyTicket(
+        uint256 eventId,
+        uint256 day,
+        uint256[] memory seatNumbers
+    ) external payable {
+
+        Event memory ev = events[eventId];
+
+        uint256 quantity = seatNumbers.length;
+
+        require(ev.active, "Event inactive");
+        require(quantity > 0 && quantity <= 2, "Max 2 per purchase");
+
+        require(
+            ticketsBought[eventId][msg.sender] + quantity <= 2,
+            "Max 2 tickets per event"
+        );
+
+        require(
+            msg.value == ev.ticketPrice * quantity,
+            "Incorrect payment"
+        );
+
+        for(uint256 i = 0; i < quantity; i++) {
+
+            uint256 seat = seatNumbers[i];
+
+            require(seat > 0 && seat <= ev.totalSeats, "Invalid seat");
+            require(!seatTaken[eventId][day][seat], "Seat taken");
+
+            seatTaken[eventId][day][seat] = true;
+
+            uint256 tokenId = nextTokenId;
+            nextTokenId++;
+
+            tickets[tokenId] = Ticket(
+                eventId,
+                day,
+                seat,
+                false
+            );
+
+            _safeMint(msg.sender, tokenId);
+
+            emit TicketPurchased(msg.sender, tokenId);
+        }
+
+        ticketsBought[eventId][msg.sender] += quantity;
+    }
+
+    /*
+    =================================
+    Auto Generate Metadata
+    =================================
+    */
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override
+        returns (string memory)
+    {
+        require(_exists(tokenId), "Token does not exist");
+
+        Ticket memory t = tickets[tokenId];
+        Event memory ev = events[t.eventId];
+
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{',
+                        '"name":"', ev.name, ' Ticket #', tokenId.toString(), '",',
+                        '"description":"Blockchain verified event ticket",',
+                        '"attributes":[',
+                            '{"trait_type":"Event","value":"', ev.name, '"},',
+                            '{"trait_type":"Day","value":"', t.day.toString(), '"},',
+                            '{"trait_type":"Seat","value":"', t.seatNumber.toString(), '"}',
+                        ']',
+                        '}'
+                    )
+                )
+            )
+        );
+
+        return string(
+            abi.encodePacked(
+                "data:application/json;base64,",
+                json
+            )
+        );
+    }
+
+    /*
+    =================================
+    Verify Ticket
+    =================================
     */
 
     function verifyTicket(uint256 tokenId)
-        public
+        external
         view
         returns (
-            address owner,
+            address ownerAddr,
+            uint256 eventId,
+            uint256 day,
             uint256 seatNumber,
             bool used
         )
     {
-        require(_ownerOf(tokenId) != address(0), "Ticket does not exist");
+        require(_exists(tokenId), "Ticket does not exist");
 
-        owner = ownerOf(tokenId);
-        seatNumber = tickets[tokenId].seatNumber;
-        used = tickets[tokenId].used;
+        Ticket memory t = tickets[tokenId];
+
+        ownerAddr = ownerOf(tokenId);
+        eventId = t.eventId;
+        day = t.day;
+        seatNumber = t.seatNumber;
+        used = t.used;
     }
 
     /*
-    Check if a wallet owns a valid ticket
-    Useful for frontend verification
+    =================================
+    Mark Ticket Used
+    =================================
     */
 
-    function checkMyTicket(uint256 tokenId) public view returns (bool) {
-
-        require(ownerOf(tokenId) == msg.sender, "Not ticket owner");
-        require(!tickets[tokenId].used, "Ticket already used");
-
-        return true;
-    }
-
-    /*
-    Mark ticket as used
-    Only organizer can validate entry
-    */
-
-    function markUsed(uint256 tokenId) public onlyOwner {
-
-        require(_ownerOf(tokenId) != address(0), "Ticket does not exist");
-        require(!tickets[tokenId].used, "Ticket already used");
+    function markUsed(uint256 tokenId)
+        external
+        onlyOwner
+    {
+        require(!tickets[tokenId].used, "Already used");
 
         tickets[tokenId].used = true;
+
+        emit TicketUsed(tokenId);
     }
 
     /*
-    Disable all transfers to prevent resale
+    =================================
+    Withdraw Funds
+    =================================
     */
 
-    function _update(
+    function withdraw()
+        external
+        onlyOwner
+    {
+        payable(owner()).transfer(
+            address(this).balance
+        );
+    }
+
+    /*
+    =================================
+    Disable Transfers
+    =================================
+    */
+
+    function _beforeTokenTransfer(
+        address from,
         address to,
         uint256 tokenId,
-        address auth
-    ) internal override returns (address) {
+        uint256 batchSize
+    ) internal override {
 
-        address from = _ownerOf(tokenId);
+        super._beforeTokenTransfer(
+            from,
+            to,
+            tokenId,
+            batchSize
+        );
 
         if (from != address(0) && to != address(0)) {
             revert("Ticket transfers disabled");
         }
-
-        return super._update(to, tokenId, auth);
     }
 }
