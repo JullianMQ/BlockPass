@@ -56,7 +56,11 @@ function ChoosePath() {
               effortlessly.
             </p>
             <div className="mt-auto">
-              <Button className="h-14 w-full gap-2" variant="primary">
+              <Button
+                className="h-14 w-full gap-2"
+                onClick={() => navigate("/organizer-dashboard")}
+                variant="primary"
+              >
                 <span>Get Started</span>
                 <span className="material-symbols-outlined">arrow_forward</span>
               </Button>

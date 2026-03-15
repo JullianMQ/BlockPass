@@ -5,6 +5,7 @@ import Catalog from "./pages/Catalog.jsx";
 import SeatMap from "./pages/SeatMap.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Button from "./components/Button.jsx";
+import OrganizerDashboard from "./pages/OrganizerDashboard.jsx";
 
 function App() {
   return (
@@ -410,6 +411,7 @@ function App() {
       <Route path="/choose-path" element={<ChoosePath />} />
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/seat-map" element={<SeatMap />} />
+      <Route path="/organizer-dashboard" element={<OrganizerDashboard />} />
     </Routes>
   );
 }

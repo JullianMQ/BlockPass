@@ -5,12 +5,15 @@ import Button from "../components/Button.jsx";
 import Dropdown from "../components/Dropdown.jsx";
 import EventCard from "../components/EventCard.jsx";
 import events from "../data/events.json";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function Catalog() {
+  const { walletAddress } = useAuth();
   const navigate = useNavigate();
   const [dateFilter, setDateFilter] = useState("all");
   const [priceFilter, setPriceFilter] = useState("any");
   const [availabilityFilter, setAvailabilityFilter] = useState("any");
+  const [creatorFilter, setCreatorFilter] = useState("all");
   const [searchValue, setSearchValue] = useState("");
 
   const filteredEvents = useMemo(() => {
@@ -54,6 +57,17 @@ function Catalog() {
       if (availabilityFilter !== "any" && event.availability !== availabilityFilter) {
         return false;
       }
+      if (creatorFilter === "me") {
+        if (!walletAddress) {
+          return false;
+        }
+        if (!event.creatorWallet) {
+          return false;
+        }
+        if (event.creatorWallet.toLowerCase() !== walletAddress.toLowerCase()) {
+          return false;
+        }
+      }
       if (priceFilter === "under-0-2" && event.priceEth >= 0.2) {
         return false;
       }
@@ -72,7 +86,7 @@ function Catalog() {
       }
       return true;
     });
-  }, [availabilityFilter, dateFilter, priceFilter, searchValue]);
+  }, [availabilityFilter, creatorFilter, dateFilter, priceFilter, searchValue, walletAddress]);
 
   const priceItems = [
     { label: "Any Price", onClick: () => setPriceFilter("any") },
@@ -86,6 +100,11 @@ function Catalog() {
     { label: "Available", onClick: () => setAvailabilityFilter("available") },
     { label: "Limited", onClick: () => setAvailabilityFilter("limited") },
     { label: "Invite Only", onClick: () => setAvailabilityFilter("invite") },
+  ];
+
+  const creatorItems = [
+    { label: "All Creators", onClick: () => setCreatorFilter("all") },
+    { label: "Created by Me", onClick: () => setCreatorFilter("me") },
   ];
 
   return (
@@ -198,6 +217,27 @@ function Catalog() {
                 </>
               }
               items={availabilityItems.map((item) => ({
+                label: item.label,
+                onClick: item.onClick,
+              }))}
+            />
+            <Dropdown
+              align="left"
+              buttonClassName="flex items-center gap-2 rounded-full border border-outline-variant/15 bg-surface-container-low px-5 py-3 text-on-surface-variant"
+              label={
+                <>
+                  <span className="material-symbols-outlined text-[20px]">
+                    account_balance_wallet
+                  </span>
+                  <span className="text-sm">
+                    {creatorFilter === "me" ? "Created by Me" : "All Creators"}
+                  </span>
+                  <span className="material-symbols-outlined text-[16px]">
+                    expand_more
+                  </span>
+                </>
+              }
+              items={creatorItems.map((item) => ({
                 label: item.label,
                 onClick: item.onClick,
               }))}
