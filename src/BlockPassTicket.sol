@@ -13,15 +13,20 @@ contract BlockPassTicket is ERC721, Ownable {
     uint256 public nextTokenId = 1;
     uint256 public nextEventId = 1;
 
+    uint256 public platformFeePercent = 5;
+    uint256 public platformBalance;
+
     struct Event {
         uint256 id;
+        address organizer;
         string name;
         string location;
-        uint256 startDate;   // UNIX timestamp
-        uint256 endDate;     // UNIX timestamp
+        uint256 startDate;
+        uint256 endDate;
         uint256 totalSeats;
         uint256 ticketPrice;
         uint256 ticketsSold;
+        uint256 revenue;
         bool active;
     }
 
@@ -36,17 +41,20 @@ contract BlockPassTicket is ERC721, Ownable {
     mapping(uint256 => Ticket) public tickets;
 
     mapping(uint256 => mapping(uint256 => mapping(uint256 => bool))) public seatTaken;
-    mapping(uint256 => mapping(address => uint256)) public ticketsBought;
 
-    event EventCreated(uint256 eventId, string name);
+    mapping(uint256 => mapping(uint256 => mapping(address => uint256))) public ticketsBoughtPerDay;
+
+    event EventCreated(uint256 eventId, address organizer, string name);
     event TicketPurchased(address buyer, uint256 tokenId);
     event TicketUsed(uint256 tokenId);
+    event RevenueWithdrawn(uint256 eventId, uint256 amount);
+    event PlatformWithdraw(uint256 amount);
 
     constructor() ERC721("BlockPassTicket", "BPT") {}
 
     /*
     =================================
-    Create Event
+    CREATE EVENT
     =================================
     */
 
@@ -57,13 +65,14 @@ contract BlockPassTicket is ERC721, Ownable {
         uint256 endDate,
         uint256 totalSeats,
         uint256 ticketPrice
-    ) external onlyOwner {
+    ) external {
 
         require(endDate >= startDate, "Invalid dates");
-        require(startDate > block.timestamp, "Event must be in future");
+        require(startDate > block.timestamp, "Event must be future");
 
         events[nextEventId] = Event(
             nextEventId,
+            msg.sender,
             name,
             location,
             startDate,
@@ -71,17 +80,18 @@ contract BlockPassTicket is ERC721, Ownable {
             totalSeats,
             ticketPrice,
             0,
+            0,
             true
         );
 
-        emit EventCreated(nextEventId, name);
+        emit EventCreated(nextEventId, msg.sender, name);
 
         nextEventId++;
     }
 
     /*
     =================================
-    Buy Ticket
+    BUY TICKET
     =================================
     */
 
@@ -99,14 +109,13 @@ contract BlockPassTicket is ERC721, Ownable {
         require(quantity > 0 && quantity <= 2, "Max 2 per purchase");
 
         require(
-            ticketsBought[eventId][msg.sender] + quantity <= 2,
-            "Max 2 tickets per event"
+            ticketsBoughtPerDay[eventId][day][msg.sender] + quantity <= 2,
+            "Max 2 tickets per day"
         );
 
-        require(
-            msg.value == ev.ticketPrice * quantity,
-            "Incorrect payment"
-        );
+        uint256 totalPrice = ev.ticketPrice * quantity;
+
+        require(msg.value == totalPrice, "Incorrect payment");
 
         for(uint256 i = 0; i < quantity; i++) {
 
@@ -134,12 +143,18 @@ contract BlockPassTicket is ERC721, Ownable {
             emit TicketPurchased(msg.sender, tokenId);
         }
 
-        ticketsBought[eventId][msg.sender] += quantity;
+        ticketsBoughtPerDay[eventId][day][msg.sender] += quantity;
+
+        uint256 platformFee = (msg.value * platformFeePercent) / 100;
+        uint256 organizerRevenue = msg.value - platformFee;
+
+        platformBalance += platformFee;
+        ev.revenue += organizerRevenue;
     }
 
     /*
     =================================
-    Fetch All Events (NEW)
+    FETCH EVENTS
     =================================
     */
 
@@ -156,36 +171,7 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Tickets Sold (NEW)
-    =================================
-    */
-
-    function ticketsSold(uint256 eventId)
-        external
-        view
-        returns(uint256)
-    {
-        return events[eventId].ticketsSold;
-    }
-
-    /*
-    =================================
-    Seats Left (NEW)
-    =================================
-    */
-
-    function seatsLeft(uint256 eventId)
-        external
-        view
-        returns(uint256)
-    {
-        Event memory ev = events[eventId];
-        return ev.totalSeats - ev.ticketsSold;
-    }
-
-    /*
-    =================================
-    Auto Metadata
+    TOKEN METADATA
     =================================
     */
 
@@ -210,6 +196,7 @@ contract BlockPassTicket is ERC721, Ownable {
                         '"attributes":[',
                             '{"trait_type":"Event","value":"', ev.name, '"},',
                             '{"trait_type":"Location","value":"', ev.location, '"},',
+                            '{"trait_type":"Day","value":"', t.day.toString(), '"},',
                             '{"trait_type":"Seat","value":"', t.seatNumber.toString(), '"}',
                         ']',
                         '}'
@@ -228,7 +215,7 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Verify Ticket
+    VERIFY TICKET
     =================================
     */
 
@@ -256,37 +243,66 @@ contract BlockPassTicket is ERC721, Ownable {
 
     /*
     =================================
-    Mark Ticket Used
+    MARK TICKET USED
     =================================
     */
 
-    function markUsed(uint256 tokenId)
-        external
-        onlyOwner
-    {
-        require(!tickets[tokenId].used, "Already used");
+    function markUsed(uint256 tokenId) external {
 
-        tickets[tokenId].used = true;
+        Ticket storage t = tickets[tokenId];
+        Event memory ev = events[t.eventId];
+
+        require(msg.sender == ev.organizer, "Not event organizer");
+        require(!t.used, "Already used");
+
+        t.used = true;
 
         emit TicketUsed(tokenId);
     }
 
     /*
     =================================
-    Withdraw
+    ORGANIZER WITHDRAW
     =================================
     */
 
-    function withdraw()
-        external
-        onlyOwner
-    {
-        payable(owner()).transfer(address(this).balance);
+    function withdrawEventRevenue(uint256 eventId) external {
+
+        Event storage ev = events[eventId];
+
+        require(msg.sender == ev.organizer, "Not event organizer");
+
+        uint256 amount = ev.revenue;
+        require(amount > 0, "No revenue");
+
+        ev.revenue = 0;
+
+        payable(msg.sender).transfer(amount);
+
+        emit RevenueWithdrawn(eventId, amount);
     }
 
     /*
     =================================
-    Disable Transfers
+    PLATFORM WITHDRAW
+    =================================
+    */
+
+    function withdrawPlatformRevenue() external onlyOwner {
+
+        uint256 amount = platformBalance;
+        require(amount > 0, "No funds");
+
+        platformBalance = 0;
+
+        payable(owner()).transfer(amount);
+
+        emit PlatformWithdraw(amount);
+    }
+
+    /*
+    =================================
+    DISABLE TRANSFERS
     =================================
     */
 
