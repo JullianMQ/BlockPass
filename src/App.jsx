@@ -6,6 +6,9 @@ import SeatMap from "./pages/SeatMap.jsx";
 import Navbar from "./components/Navbar.jsx";
 import Button from "./components/Button.jsx";
 import OrganizerDashboard from "./pages/OrganizerDashboard.jsx";
+import MyTickets from "./pages/MyTickets.jsx";
+import SupportPage from "./pages/Support.jsx";
+import DocsPage from "./pages/Docs.jsx";
 
 function App() {
   return (
@@ -412,6 +415,9 @@ function App() {
       <Route path="/catalog" element={<Catalog />} />
       <Route path="/seat-map" element={<SeatMap />} />
       <Route path="/organizer-dashboard" element={<OrganizerDashboard />} />
+      <Route path="/my-tickets" element={<MyTickets />} />
+      <Route path="/support" element={<SupportPage />} />
+      <Route path="/docs" element={<DocsPage />} />
     </Routes>
   );
 }

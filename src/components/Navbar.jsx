@@ -16,9 +16,8 @@ function Navbar({
     : "";
 
   const resourceItems = [
-    { label: "Docs", onClick: () => {} },
-    { label: "Protocol Status", onClick: () => {} },
-    { label: "Support", onClick: () => {} },
+    { label: "Docs", onClick: () => navigate("/docs") },
+    { label: "Support", onClick: () => navigate("/support") },
   ];
 
   return (
@@ -35,7 +34,10 @@ function Navbar({
                   confirmation_number
                 </span>
               </div>
-              <Link className="font-headline text-2xl font-bold tracking-tight" to="/">
+              <Link
+                className="font-headline text-2xl font-bold tracking-tight"
+                to="/"
+              >
                 BlockPass
               </Link>
             </div>
@@ -48,13 +50,13 @@ function Navbar({
               </Link>
               <Link
                 className="font-label text-sm font-medium transition-colors hover:text-primary"
-                to="/catalog"
+                to="/choose-path"
               >
-                Marketplace
+                Portal
               </Link>
               <Link
                 className="font-label text-sm font-medium transition-colors hover:text-primary"
-                to="/choose-path"
+                to="/my-tickets"
               >
                 My Tickets
               </Link>
@@ -118,7 +120,10 @@ function Navbar({
 
       {showFloatingNav ? (
         <nav className="fixed bottom-6 left-1/2 z-50 flex h-16 w-[90%] max-w-md -translate-x-1/2 items-center justify-around rounded-full glass-nav px-4 shadow-2xl md:hidden">
-          <Link className="flex flex-col items-center gap-0.5 text-primary" to="/catalog">
+          <Link
+            className="flex flex-col items-center gap-0.5 text-primary"
+            to="/catalog"
+          >
             <span
               className="material-symbols-outlined text-[24px]"
               style={{ fontVariationSettings: '"FILL" 1' }}

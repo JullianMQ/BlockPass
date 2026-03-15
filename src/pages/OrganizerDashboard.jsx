@@ -72,7 +72,16 @@ function OrganizerDashboard() {
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-xs font-label uppercase tracking-widest text-on-secondary-container">
-                  Date &amp; Time
+                  Start Date &amp; Time
+                </label>
+                <input
+                  className="rounded-md border-none bg-surface-container-highest px-5 py-4 focus:ring-1 focus:ring-primary/40"
+                  type="datetime-local"
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-label uppercase tracking-widest text-on-secondary-container">
+                  End Date &amp; Time
                 </label>
                 <input
                   className="rounded-md border-none bg-surface-container-highest px-5 py-4 focus:ring-1 focus:ring-primary/40"
