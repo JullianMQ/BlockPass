@@ -1,15 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
-import { ethers } from "ethers";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 
-const CONTRACT_ADDRESS = "0x4eBCe290d6A89a5E1A25f6b603f0Ee73F90b23f7";
-const SEPOLIA_CHAIN_ID = 11155111;
-const ABI = [
-  "function getEvents() view returns (tuple(uint256 id,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,bool active)[])",
-];
 const ROWS = ["A", "B", "C", "D", "E"];
 const COLS = 8;
 const TAKEN_SEATS = new Set([3, 14, 16, 26, 27]);
@@ -31,7 +25,6 @@ function SeatMap() {
   const [statusMessage, setStatusMessage] = useState("");
   const [eventDetails, setEventDetails] = useState(null);
   const [eventError, setEventError] = useState("");
-  const [eventLoading, setEventLoading] = useState(false);
 
   const normalizeEventDetails = (details) => {
     if (!details) return null;
@@ -68,59 +61,7 @@ function SeatMap() {
       }
     }
 
-    const loadEvent = async () => {
-      if (!window.ethereum) {
-        setEventError("MetaMask not detected.");
-        return;
-      }
-      try {
-        setEventLoading(true);
-        setEventError("");
-        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-        const network = await provider.getNetwork();
-        if (network.chainId !== SEPOLIA_CHAIN_ID) {
-          setEventError("Switch MetaMask to Sepolia to load event details.");
-          return;
-        }
-        const code = await provider.getCode(CONTRACT_ADDRESS);
-        if (!code || code === "0x") {
-          setEventError("Contract not found on Sepolia.");
-          return;
-        }
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-        const events = await contract.getEvents();
-        const event = events.find((item) => item.id.toNumber() === normalizedId);
-        if (!event) {
-          setEventError("Event not found on-chain.");
-          return;
-        }
-        const start = new Date(Number(event.startDate) * 1000);
-        const end = new Date(Number(event.endDate) * 1000);
-        setEventDetails({
-          name: event.name,
-          location: event.location,
-          startDate: start.toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-            year: "numeric",
-          }),
-          endDate: end.toLocaleDateString("en-US", {
-            month: "short",
-            day: "2-digit",
-            year: "numeric",
-          }),
-          ticketPrice: Number(ethers.utils.formatEther(event.ticketPrice)),
-          totalSeats: event.totalSeats.toNumber(),
-        });
-      } catch (error) {
-        console.error("Failed to load event", error);
-        setEventError("Failed to load event details.");
-      } finally {
-        setEventLoading(false);
-      }
-    };
-
-    loadEvent();
+    setEventError("Event details unavailable. Return to the catalog.");
   }, [eventId, location.state]);
 
   const seats = useMemo(() => {
@@ -218,11 +159,6 @@ function SeatMap() {
                 </span>
               </div>
             </div>
-            {eventLoading ? (
-              <p className="mt-4 text-sm text-on-surface-variant">
-                Loading event details...
-              </p>
-            ) : null}
             {eventError ? (
               <p className="mt-4 text-sm text-error">{eventError}</p>
             ) : null}
