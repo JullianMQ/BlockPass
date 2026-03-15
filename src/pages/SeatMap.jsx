@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
+import { ethers } from "ethers";
 import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 
-const ROWS = ["A", "B", "C", "D", "E"];
+const CONTRACT_ADDRESS = "0xB3874d900eC4133327Bdd7f61926CBBeC3479522";
+const SEPOLIA_CHAIN_ID = 11155111;
+const ABI = [
+  "function seatTaken(uint256 eventId,uint256 day,uint256 seat) view returns (bool)",
+  "function buyTicket(uint256 eventId,uint256 day,uint256[] seatNumbers) payable",
+  "function ticketsBought(uint256 eventId,address buyer) view returns (uint256)",
+];
+const DEFAULT_ROWS = 5;
 const COLS = 8;
-const TAKEN_SEATS = new Set([3, 14, 16, 26, 27]);
 const PRICE_ETH = 0.14;
-const SERVICE_FEE = 0.002;
-const GAS_ESTIMATE = 0.0008;
 const MAX_TICKETS_PER_WALLET = 2;
 
 function SeatMap() {
@@ -23,6 +28,12 @@ function SeatMap() {
     return stored ? Number(stored) : 0;
   });
   const [statusMessage, setStatusMessage] = useState("");
+  const [seatLoadError, setSeatLoadError] = useState("");
+  const [seatLoading, setSeatLoading] = useState(false);
+  const [takenSeats, setTakenSeats] = useState(new Set());
+  const [buyLoading, setBuyLoading] = useState(false);
+  const [seatRefreshKey, setSeatRefreshKey] = useState(0);
+  const [purchasedCountOnChain, setPurchasedCountOnChain] = useState(null);
   const [eventDetails, setEventDetails] = useState(null);
   const [eventError, setEventError] = useState("");
 
@@ -64,30 +75,133 @@ function SeatMap() {
     setEventError("Event details unavailable. Return to the catalog.");
   }, [eventId, location.state]);
 
+  const seatCount = useMemo(() => {
+    if (!eventDetails?.totalSeats) return DEFAULT_ROWS * COLS;
+    return Math.max(1, Number(eventDetails.totalSeats));
+  }, [eventDetails]);
+
+  const dayIndex = useMemo(() => {
+    if (!eventDetails?.startDate) return 1;
+    const start = new Date(eventDetails.startDate);
+    if (Number.isNaN(start.getTime())) return 1;
+    return 1;
+  }, [eventDetails]);
+
   const seats = useMemo(() => {
     const items = [];
+    const rowCount = Math.ceil(seatCount / COLS);
     let seatNumber = 1;
-    for (const row of ROWS) {
+    const getRowLabel = (index) => {
+      let label = "";
+      let value = index;
+      while (value >= 0) {
+        label = String.fromCharCode(65 + (value % 26)) + label;
+        value = Math.floor(value / 26) - 1;
+      }
+      return label;
+    };
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      const rowLabel = getRowLabel(rowIndex);
       for (let col = 1; col <= COLS; col += 1) {
+        if (seatNumber > seatCount) break;
         items.push({
           id: seatNumber,
-          label: `${row}${col}`,
-          isTaken: TAKEN_SEATS.has(seatNumber),
+          label: `${rowLabel}${col}`,
+          isTaken: takenSeats.has(seatNumber),
         });
         seatNumber += 1;
       }
     }
     return items;
-  }, []);
+  }, [seatCount, takenSeats]);
 
+  useEffect(() => {
+    const loadSeats = async () => {
+      if (!eventId || !eventDetails?.totalSeats) return;
+      if (!window.ethereum) {
+        setSeatLoadError("MetaMask not detected.");
+        return;
+      }
+      try {
+        setSeatLoading(true);
+        setSeatLoadError("");
+        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const network = await provider.getNetwork();
+        if (network.chainId !== SEPOLIA_CHAIN_ID) {
+          setSeatLoadError("Switch MetaMask to Sepolia to load seats.");
+          return;
+        }
+        const code = await provider.getCode(CONTRACT_ADDRESS);
+        if (!code || code === "0x") {
+          setSeatLoadError("Contract not found on Sepolia.");
+          return;
+        }
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        const normalizedId = Number(eventId);
+        const totalSeats = Number(eventDetails.totalSeats);
+        const seatStatuses = [];
+        const batchSize = 40;
+        for (let start = 0; start < totalSeats; start += batchSize) {
+          const end = Math.min(start + batchSize, totalSeats);
+          const chunk = await Promise.all(
+            Array.from({ length: end - start }, (_, index) =>
+              contract.seatTaken(normalizedId, dayIndex, start + index + 1)
+            )
+          );
+          seatStatuses.push(...chunk);
+        }
+        setTakenSeats(
+          new Set(
+            seatStatuses
+              .map((isTaken, index) => (isTaken ? index + 1 : null))
+              .filter(Boolean)
+          )
+        );
+      } catch (error) {
+        console.error("Failed to load seats", error);
+        setSeatLoadError("Failed to load seat availability.");
+      } finally {
+        setSeatLoading(false);
+      }
+    };
+
+    loadSeats();
+  }, [dayIndex, eventDetails, eventId, seatRefreshKey]);
+
+  useEffect(() => {
+    const loadPurchasedCount = async () => {
+      if (!eventId || !walletAddress) {
+        setPurchasedCountOnChain(null);
+        return;
+      }
+      if (!window.ethereum) return;
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const network = await provider.getNetwork();
+        if (network.chainId !== SEPOLIA_CHAIN_ID) return;
+        const code = await provider.getCode(CONTRACT_ADDRESS);
+        if (!code || code === "0x") return;
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+        const count = await contract.ticketsBought(eventId, walletAddress);
+        setPurchasedCountOnChain(Number(count));
+      } catch (error) {
+        console.error("Failed to load purchased count", error);
+      }
+    };
+
+    loadPurchasedCount();
+  }, [eventId, walletAddress, seatRefreshKey]);
+
+  const effectivePurchasedCount =
+    purchasedCountOnChain ?? purchasedCount;
   const remainingTickets = Math.max(
     0,
-    MAX_TICKETS_PER_WALLET - purchasedCount
+    MAX_TICKETS_PER_WALLET - effectivePurchasedCount
   );
 
   const ticketPrice =
     eventDetails?.ticketPrice ?? eventDetails?.priceEth ?? PRICE_ETH;
-  const totalPrice = ticketPrice + SERVICE_FEE + GAS_ESTIMATE;
+  const totalPrice = ticketPrice;
 
   const handleSelect = (seat) => {
     if (seat.isTaken) {
@@ -97,7 +211,7 @@ function SeatMap() {
     setStatusMessage("");
   };
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!walletAddress) {
       setStatusMessage("Connect your wallet to buy tickets.");
       return;
@@ -110,12 +224,44 @@ function SeatMap() {
       setStatusMessage("Ticket limit reached for this wallet.");
       return;
     }
+    if (!window.ethereum) {
+      setStatusMessage("MetaMask not detected.");
+      return;
+    }
 
-    const nextCount = purchasedCount + 1;
-    setPurchasedCount(nextCount);
-    localStorage.setItem(`bp_tickets_${walletAddress}`, String(nextCount));
-    setStatusMessage("Ticket reserved. Awaiting on-chain confirmation.");
-    setSelectedSeat(null);
+    try {
+      setBuyLoading(true);
+      setStatusMessage("");
+      const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+      await provider.send("eth_requestAccounts", []);
+      const network = await provider.getNetwork();
+      if (network.chainId !== SEPOLIA_CHAIN_ID) {
+        setStatusMessage("Switch MetaMask to Sepolia to purchase.");
+        return;
+      }
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+      const value = ethers.utils.parseEther(ticketPrice.toString());
+      const tx = await contract.buyTicket(
+        Number(eventId),
+        dayIndex,
+        [selectedSeat.id],
+        { value }
+      );
+      setStatusMessage("Transaction sent. Waiting for confirmation...");
+      await tx.wait();
+      setStatusMessage("Ticket purchased successfully.");
+      setSelectedSeat(null);
+      setSeatRefreshKey((current) => current + 1);
+      const nextCount = effectivePurchasedCount + 1;
+      setPurchasedCount(nextCount);
+      localStorage.setItem(`bp_tickets_${walletAddress}`, String(nextCount));
+    } catch (error) {
+      console.error("Ticket purchase failed", error);
+      setStatusMessage("Ticket purchase failed. Check MetaMask for details.");
+    } finally {
+      setBuyLoading(false);
+    }
   };
 
   return (
@@ -216,6 +362,14 @@ function SeatMap() {
                 })}
               </div>
             </div>
+            {seatLoading ? (
+              <p className="text-center text-xs text-on-surface-variant">
+                Loading seat availability...
+              </p>
+            ) : null}
+            {seatLoadError ? (
+              <p className="text-center text-xs text-error">{seatLoadError}</p>
+            ) : null}
             <div className="flex justify-center gap-8 border-t border-outline-variant/20 pt-8">
               <div className="flex items-center gap-3">
                 <div className="h-4 w-4 rounded-sm bg-surface-container-highest"></div>
@@ -266,14 +420,6 @@ function SeatMap() {
                 </div>
               </div>
               <div className="space-y-3 px-2">
-                <div className="flex justify-between text-body-sm text-on-surface-variant">
-                  <span>Service Fee</span>
-                  <span>{SERVICE_FEE.toFixed(3)} ETH</span>
-                </div>
-                <div className="flex justify-between text-body-sm text-on-surface-variant">
-                  <span>Gas Estimate</span>
-                  <span>{GAS_ESTIMATE.toFixed(4)} ETH</span>
-                </div>
                 <div className="my-4 h-[1px] bg-outline-variant/20"></div>
                 <div className="flex justify-between font-bold text-on-surface">
                   <span>Total</span>
@@ -303,10 +449,10 @@ function SeatMap() {
 
             <Button
               className="w-full gap-3 py-4 text-lg shadow-[0_8px_30px_rgba(128,131,255,0.3)] hover:shadow-[0_12px_40px_rgba(128,131,255,0.4)]"
-              disabled={!selectedSeat || remainingTickets <= 0}
+              disabled={!selectedSeat || remainingTickets <= 0 || buyLoading}
               onClick={handleBuy}
             >
-              Buy Ticket
+              {buyLoading ? "Processing..." : "Buy Ticket"}
               <span className="material-symbols-outlined">double_arrow</span>
             </Button>
             <p className="mt-4 text-center text-[10px] leading-relaxed text-outline">
@@ -319,16 +465,6 @@ function SeatMap() {
             ) : null}
           </div>
 
-          <div className="flex flex-col gap-3 px-4">
-            <div className="flex items-center gap-3 text-on-surface-variant/60">
-              <span className="material-symbols-outlined text-sm">shield</span>
-              <span className="text-body-xs">Secure Ledger Protocol v2.4</span>
-            </div>
-            <div className="flex items-center gap-3 text-on-surface-variant/60">
-              <span className="material-symbols-outlined text-sm">database</span>
-              <span className="text-body-xs">Immutable Metadata Storage</span>
-            </div>
-          </div>
         </aside>
       </main>
 

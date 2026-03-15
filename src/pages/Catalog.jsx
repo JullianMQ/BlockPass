@@ -84,6 +84,7 @@ function Catalog() {
             endDate: endDateLabel,
             priceEth,
             ticketPrice: priceEth,
+            totalSeats: event.totalSeats.toNumber(),
             availability:
               event.active &&
               event.ticketsSold.toNumber() < event.totalSeats.toNumber()
