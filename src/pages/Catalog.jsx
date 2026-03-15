@@ -7,10 +7,10 @@ import Dropdown from "../components/Dropdown.jsx";
 import EventCard from "../components/EventCard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const CONTRACT_ADDRESS = "0xB3874d900eC4133327Bdd7f61926CBBeC3479522";
+const CONTRACT_ADDRESS = "0xEbD7325C20a9257be621b24f50b5BF59dBB579ad";
 const SEPOLIA_CHAIN_ID = 11155111;
 const ABI = [
-  "function getEvents() view returns (tuple(uint256 id,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,bool active)[])",
+  "function getEvents() view returns (tuple(uint256 id,address organizer,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,uint256 revenue,bool active)[])",
 ];
 
 function Catalog() {
@@ -77,11 +77,14 @@ function Catalog() {
 
           return {
             id: String(event.id),
+            organizer: event.organizer,
             name: event.name,
             location: event.location,
             date: startDateLabel,
             startDate: startDateLabel,
             endDate: endDateLabel,
+            startDateTs: Number(event.startDate),
+            endDateTs: Number(event.endDate),
             priceEth,
             ticketPrice: priceEth,
             totalSeats: event.totalSeats.toNumber(),
@@ -91,7 +94,7 @@ function Catalog() {
                 ? "available"
                 : "limited",
             tags: daySpan > 1 ? ["assigned"] : [],
-            creatorWallet: "",
+            creatorWallet: event.organizer,
           };
         });
         setEvents(mappedEvents);

@@ -4,12 +4,12 @@ import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const CONTRACT_ADDRESS = "0xB3874d900eC4133327Bdd7f61926CBBeC3479522";
+const CONTRACT_ADDRESS = "0xEbD7325C20a9257be621b24f50b5BF59dBB579ad";
 const SEPOLIA_CHAIN_ID = 11155111;
 const ABI = [
   "event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)",
   "function tickets(uint256 tokenId) view returns (uint256 eventId,uint256 day,uint256 seatNumber,bool used)",
-  "function events(uint256 eventId) view returns (uint256 id,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,bool active)",
+  "function events(uint256 eventId) view returns (uint256 id,address organizer,string name,string location,uint256 startDate,uint256 endDate,uint256 totalSeats,uint256 ticketPrice,uint256 ticketsSold,uint256 revenue,bool active)",
   "function ownerOf(uint256 tokenId) view returns (address)",
 ];
 

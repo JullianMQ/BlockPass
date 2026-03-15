@@ -5,12 +5,12 @@ import { useAuth } from "../context/AuthContext.jsx";
 import Navbar from "../components/Navbar.jsx";
 import Button from "../components/Button.jsx";
 
-const CONTRACT_ADDRESS = "0xB3874d900eC4133327Bdd7f61926CBBeC3479522";
+const CONTRACT_ADDRESS = "0xEbD7325C20a9257be621b24f50b5BF59dBB579ad";
 const SEPOLIA_CHAIN_ID = 11155111;
 const ABI = [
   "function seatTaken(uint256 eventId,uint256 day,uint256 seat) view returns (bool)",
   "function buyTicket(uint256 eventId,uint256 day,uint256[] seatNumbers) payable",
-  "function ticketsBought(uint256 eventId,address buyer) view returns (uint256)",
+  "function ticketsBoughtPerDay(uint256 eventId,uint256 day,address buyer) view returns (uint256)",
 ];
 const DEFAULT_ROWS = 5;
 const COLS = 8;
@@ -22,11 +22,7 @@ function SeatMap() {
   const location = useLocation();
   const { walletAddress } = useAuth();
   const [selectedSeat, setSelectedSeat] = useState(null);
-  const [purchasedCount, setPurchasedCount] = useState(() => {
-    if (!walletAddress) return 0;
-    const stored = localStorage.getItem(`bp_tickets_${walletAddress}`);
-    return stored ? Number(stored) : 0;
-  });
+  const [purchasedCount, setPurchasedCount] = useState(0);
   const [statusMessage, setStatusMessage] = useState("");
   const [seatLoadError, setSeatLoadError] = useState("");
   const [seatLoading, setSeatLoading] = useState(false);
@@ -34,6 +30,7 @@ function SeatMap() {
   const [buyLoading, setBuyLoading] = useState(false);
   const [seatRefreshKey, setSeatRefreshKey] = useState(0);
   const [purchasedCountOnChain, setPurchasedCountOnChain] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(1);
   const [eventDetails, setEventDetails] = useState(null);
   const [eventError, setEventError] = useState("");
 
@@ -75,17 +72,47 @@ function SeatMap() {
     setEventError("Event details unavailable. Return to the catalog.");
   }, [eventId, location.state]);
 
+  useEffect(() => {
+    setSelectedDay(1);
+  }, [eventId]);
+
   const seatCount = useMemo(() => {
     if (!eventDetails?.totalSeats) return DEFAULT_ROWS * COLS;
     return Math.max(1, Number(eventDetails.totalSeats));
   }, [eventDetails]);
 
-  const dayIndex = useMemo(() => {
-    if (!eventDetails?.startDate) return 1;
-    const start = new Date(eventDetails.startDate);
-    if (Number.isNaN(start.getTime())) return 1;
+  const dayCount = useMemo(() => {
+    const startTs = eventDetails?.startDateTs;
+    const endTs = eventDetails?.endDateTs;
+    if (startTs && endTs) {
+      const diff = Math.floor((endTs - startTs) / (24 * 60 * 60));
+      return Math.max(1, diff + 1);
+    }
+    if (eventDetails?.startDate && eventDetails?.endDate) {
+      const start = new Date(eventDetails.startDate);
+      const end = new Date(eventDetails.endDate);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        const diff = Math.floor(
+          (end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)
+        );
+        return Math.max(1, diff + 1);
+      }
+    }
     return 1;
   }, [eventDetails]);
+
+  const dayIndex = selectedDay;
+
+  useEffect(() => {
+    if (!walletAddress || !eventId) {
+      setPurchasedCount(0);
+      return;
+    }
+    const stored = localStorage.getItem(
+      `bp_tickets_${walletAddress}_${eventId}_${dayIndex}`
+    );
+    setPurchasedCount(stored ? Number(stored) : 0);
+  }, [dayIndex, eventId, walletAddress]);
 
   const seats = useMemo(() => {
     const items = [];
@@ -182,7 +209,11 @@ function SeatMap() {
         const code = await provider.getCode(CONTRACT_ADDRESS);
         if (!code || code === "0x") return;
         const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-        const count = await contract.ticketsBought(eventId, walletAddress);
+        const count = await contract.ticketsBoughtPerDay(
+          eventId,
+          dayIndex,
+          walletAddress
+        );
         setPurchasedCountOnChain(Number(count));
       } catch (error) {
         console.error("Failed to load purchased count", error);
@@ -190,7 +221,7 @@ function SeatMap() {
     };
 
     loadPurchasedCount();
-  }, [eventId, walletAddress, seatRefreshKey]);
+  }, [dayIndex, eventId, walletAddress, seatRefreshKey]);
 
   const effectivePurchasedCount =
     purchasedCountOnChain ?? purchasedCount;
@@ -221,7 +252,7 @@ function SeatMap() {
       return;
     }
     if (remainingTickets <= 0) {
-      setStatusMessage("Ticket limit reached for this wallet.");
+      setStatusMessage("Ticket limit reached for this day.");
       return;
     }
     if (!window.ethereum) {
@@ -255,7 +286,10 @@ function SeatMap() {
       setSeatRefreshKey((current) => current + 1);
       const nextCount = effectivePurchasedCount + 1;
       setPurchasedCount(nextCount);
-      localStorage.setItem(`bp_tickets_${walletAddress}`, String(nextCount));
+      localStorage.setItem(
+        `bp_tickets_${walletAddress}_${eventId}_${dayIndex}`,
+        String(nextCount)
+      );
     } catch (error) {
       console.error("Ticket purchase failed", error);
       setStatusMessage("Ticket purchase failed. Check MetaMask for details.");
@@ -296,6 +330,36 @@ function SeatMap() {
                     : "—"}
                 </span>
               </div>
+              {dayCount > 1 ? (
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary-fixed-dim">
+                    event
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: dayCount }, (_, index) => {
+                      const dayNumber = index + 1;
+                      const isActive = dayNumber === selectedDay;
+                      return (
+                        <button
+                          key={dayNumber}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                            isActive
+                              ? "bg-primary-container text-on-primary-container"
+                              : "border border-outline-variant/30 text-on-surface-variant"
+                          }`}
+                          onClick={() => {
+                            setSelectedDay(dayNumber);
+                            setSelectedSeat(null);
+                          }}
+                          type="button"
+                        >
+                          Day {dayNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary-fixed-dim">
                   location_on
@@ -411,6 +475,11 @@ function SeatMap() {
                   <p className="text-body-lg font-bold text-on-surface">
                     {selectedSeat ? selectedSeat.label : "—"}
                   </p>
+                  {dayCount > 1 ? (
+                    <p className="mt-1 text-xs text-on-surface-variant">
+                      Day {dayIndex}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="text-right">
                   <p className="text-label-md text-outline">Base Price</p>
@@ -438,7 +507,7 @@ function SeatMap() {
                   </p>
                   <p className="text-body-xs text-on-surface-variant">
                     {remainingTickets} of {MAX_TICKETS_PER_WALLET} tickets
-                    remaining for this wallet.
+                    remaining for this day.
                   </p>
                 </div>
                 <span className="material-symbols-outlined text-primary">
